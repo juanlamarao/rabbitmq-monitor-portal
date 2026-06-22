@@ -1,0 +1,23 @@
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+/* Ajuste global para grids MUI: mover o espaçamento lateral aplicado em itens do lado esquerdo para o lado direito. */
+.MuiGrid-container.MuiGrid-spacing-xs-2 > .MuiGrid-item {
+  padding-left: 0 !important;
+  padding-right: 16px !important;
+}
+
+.MuiDialogActions-root {
+  padding: 16px !important;
+}
+
+
+/* Nas telas principais, os filtros precisam manter respiro dos dois lados mesmo com o ajuste global dos grids. */
+.main-page-filters .MuiGrid-container.MuiGrid-spacing-xs-2 > .MuiGrid-item {
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+}
