@@ -1,0 +1,11 @@
+# Mantém arquivos de texto com LF no repositório e no checkout
+* text=auto eol=lf
+
+# Arquivos que precisam de CRLF no Windows
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.py text eol=lf
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
