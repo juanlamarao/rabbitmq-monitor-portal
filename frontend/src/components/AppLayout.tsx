@@ -8,8 +8,11 @@ import {
   ExpandMore,
   FactCheck,
   Groups,
+  ManageHistory,
+  SyncAlt,
   Menu as MenuIcon,
   Queue as QueueIcon,
+  PlaylistAddCheck,
   Rule,
   Settings,
 } from '@mui/icons-material';
@@ -46,6 +49,7 @@ const navItems = [
   { label: 'Clusters', path: '/clusters', icon: <AccountTree /> },
   { label: 'Queues', path: '/queues', icon: <QueueIcon /> },
   { label: 'Templates', path: '/templates', icon: <Rule /> },
+  { label: 'Edição em massa', path: '/bulk-actions', icon: <PlaylistAddCheck /> },
   { label: 'Reports', path: '/reports', icon: <Assessment /> },
   { label: 'Audit Log', path: '/audit-logs', icon: <FactCheck /> },
 ];
@@ -53,6 +57,8 @@ const navItems = [
 const adminItems = [
   { label: 'Grupos SRE', path: '/admin/sre-groups', icon: <Groups /> },
   { label: 'Datadog Orgs', path: '/admin/datadog-orgs', icon: <FactCheck /> },
+  { label: 'Jobs', path: '/admin/jobs', icon: <ManageHistory /> },
+  { label: 'Datadog Sync', path: '/admin/datadog-sync', icon: <SyncAlt /> },
 ];
 
 export default function AppLayout({ children, mode, onToggleMode }: AppLayoutProps) {

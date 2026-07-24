@@ -122,11 +122,14 @@ publish_message() {
     }" > /dev/null
 }
 
-publish_message "orders.created" "{\"event\":\"orders.created\",\"order_id\":\"1001\"}"
-publish_message "orders.payment.pending" "{\"event\":\"orders.payment.pending\",\"order_id\":\"1001\"}"
-publish_message "notifications.email" "{\"event\":\"notifications.email\",\"target\":\"user@example.com\"}"
-publish_message "billing.invoice.created" "{\"event\":\"billing.invoice.created\",\"invoice_id\":\"INV-1001\"}"
-publish_message "deadletter.default" "{\"event\":\"deadletter.default\",\"reason\":\"demo message\"}"
+# O payload da API de publish precisa ser uma string JSON válida. Para evitar
+# erro 400 por aspas não escapadas dentro de shell script, as mensagens de demo
+# são publicadas como strings simples.
+publish_message "orders.created" "event=orders.created;order_id=1001"
+publish_message "orders.payment.pending" "event=orders.payment.pending;order_id=1001"
+publish_message "notifications.email" "event=notifications.email;target=user@example.com"
+publish_message "billing.invoice.created" "event=billing.invoice.created;invoice_id=INV-1001"
+publish_message "deadletter.default" "event=deadletter.default;reason=demo-message"
 
 echo "RabbitMQ demo inicializado com sucesso."
 echo "Management UI: http://localhost:15672"

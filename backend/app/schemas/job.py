@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import Any
 
+from pydantic import BaseModel, Field
+
 from app.schemas.common import ORMModel
 
 
@@ -14,3 +16,11 @@ class JobHistoryRead(ORMModel):
     started_at: datetime | None = None
     finished_at: datetime | None = None
     created_at: datetime
+
+
+class JobBulkEnqueueRead(BaseModel):
+    enqueued: int
+    skipped: int
+    errors: list[dict[str, Any]] = Field(default_factory=list)
+    jobs: list[JobHistoryRead] = Field(default_factory=list)
+    skipped_jobs: list[JobHistoryRead] = Field(default_factory=list)

@@ -12,6 +12,12 @@ QUEUE_TEMPLATES = [
         "description": "Alerta quando a quantidade de mensagens na fila ultrapassar o threshold configurado.",
         "component_type": "queue",
         "monitor_kind": "threshold",
+
+        "datadog_monitor_type": "query alert",
+        "datadog_query_template": 'max(last_{{window}}):max:rabbitmq.queue.messages{rabbitmq_cluster:*} by {rabbitmq_cluster,vhost,queue} > {{threshold}}',
+        "datadog_message_template": '{{#is_alert}}\n🚨 RabbitMQ Queue em alerta\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n\nDetalhes da fila: {{portal_public_base_url}}/public/queue-reference?rabbitmq_cluster={{rabbitmq_cluster.name}}&vhost={{vhost.name}}&queue={{queue.name}}\n{{/is_alert}}\n\n{{#is_recovery}}\n✅ RabbitMQ Queue recuperada\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n{{/is_recovery}}',
+        "datadog_tags_template": ['managed_by:rabbitmq-monitor-portal', 'component:queue', 'provider:datadog', 'template:{{template_code}}'],
+        "datadog_options": {'include_tags': True, 'notify_no_data': False, 'require_full_window': False},
         "default_config": {"threshold": 5000, "window": "15m", "business_days_only": False},
     },
     {
@@ -20,6 +26,12 @@ QUEUE_TEMPLATES = [
         "description": "Alerta para filas DLQ quando houver mensagens acima do limite configurado.",
         "component_type": "queue",
         "monitor_kind": "dlq_threshold",
+
+        "datadog_monitor_type": "query alert",
+        "datadog_query_template": 'max(last_{{window}}):max:rabbitmq.queue.messages{rabbitmq_cluster:*} by {rabbitmq_cluster,vhost,queue} > {{threshold}}',
+        "datadog_message_template": '{{#is_alert}}\n🚨 RabbitMQ Queue em alerta\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n\nDetalhes da fila: {{portal_public_base_url}}/public/queue-reference?rabbitmq_cluster={{rabbitmq_cluster.name}}&vhost={{vhost.name}}&queue={{queue.name}}\n{{/is_alert}}\n\n{{#is_recovery}}\n✅ RabbitMQ Queue recuperada\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n{{/is_recovery}}',
+        "datadog_tags_template": ['managed_by:rabbitmq-monitor-portal', 'component:queue', 'provider:datadog', 'template:{{template_code}}'],
+        "datadog_options": {'include_tags': True, 'notify_no_data': False, 'require_full_window': False},
         "default_config": {"threshold": 0, "window": "15m", "business_days_only": False},
     },
     {
@@ -28,6 +40,12 @@ QUEUE_TEMPLATES = [
         "description": "Alerta quando houver mensagens e consumidores abaixo do mínimo configurado.",
         "component_type": "queue",
         "monitor_kind": "messages_low_consumers",
+
+        "datadog_monitor_type": "query alert",
+        "datadog_query_template": None,
+        "datadog_message_template": '{{#is_alert}}\n🚨 RabbitMQ Queue em alerta\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n\nDetalhes da fila: {{portal_public_base_url}}/public/queue-reference?rabbitmq_cluster={{rabbitmq_cluster.name}}&vhost={{vhost.name}}&queue={{queue.name}}\n{{/is_alert}}\n\n{{#is_recovery}}\n✅ RabbitMQ Queue recuperada\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n{{/is_recovery}}',
+        "datadog_tags_template": ['managed_by:rabbitmq-monitor-portal', 'component:queue', 'provider:datadog', 'template:{{template_code}}'],
+        "datadog_options": {'include_tags': True, 'notify_no_data': False, 'require_full_window': False},
         "default_config": {"messages_threshold": 1, "consumers_threshold": 0, "window": "15m", "business_days_only": False},
     },
     {
@@ -36,6 +54,12 @@ QUEUE_TEMPLATES = [
         "description": "Alerta quando a quantidade de mensagens crescer durante a janela configurada.",
         "component_type": "queue",
         "monitor_kind": "growing_messages",
+
+        "datadog_monitor_type": "query alert",
+        "datadog_query_template": 'change(avg(last_{{window}}),last_{{window}}):max:rabbitmq.queue.messages{rabbitmq_cluster:*} by {rabbitmq_cluster,vhost,queue} > 0',
+        "datadog_message_template": '{{#is_alert}}\n🚨 RabbitMQ Queue em alerta\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n\nDetalhes da fila: {{portal_public_base_url}}/public/queue-reference?rabbitmq_cluster={{rabbitmq_cluster.name}}&vhost={{vhost.name}}&queue={{queue.name}}\n{{/is_alert}}\n\n{{#is_recovery}}\n✅ RabbitMQ Queue recuperada\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n{{/is_recovery}}',
+        "datadog_tags_template": ['managed_by:rabbitmq-monitor-portal', 'component:queue', 'provider:datadog', 'template:{{template_code}}'],
+        "datadog_options": {'include_tags': True, 'notify_no_data': False, 'require_full_window': False},
         "default_config": {"window": "15m", "business_days_only": False},
     },
     {
@@ -44,6 +68,12 @@ QUEUE_TEMPLATES = [
         "description": "Alerta quando a fila permanecer sem mensagens durante a janela configurada.",
         "component_type": "queue",
         "monitor_kind": "without_messages",
+
+        "datadog_monitor_type": "query alert",
+        "datadog_query_template": 'max(last_{{window}}):max:rabbitmq.queue.messages{rabbitmq_cluster:*} by {rabbitmq_cluster,vhost,queue} < 1',
+        "datadog_message_template": '{{#is_alert}}\n🚨 RabbitMQ Queue em alerta\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n\nDetalhes da fila: {{portal_public_base_url}}/public/queue-reference?rabbitmq_cluster={{rabbitmq_cluster.name}}&vhost={{vhost.name}}&queue={{queue.name}}\n{{/is_alert}}\n\n{{#is_recovery}}\n✅ RabbitMQ Queue recuperada\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n{{/is_recovery}}',
+        "datadog_tags_template": ['managed_by:rabbitmq-monitor-portal', 'component:queue', 'provider:datadog', 'template:{{template_code}}'],
+        "datadog_options": {'include_tags': True, 'notify_no_data': False, 'require_full_window': False},
         "default_config": {"window": "15m", "business_days_only": False},
     },
 ]
@@ -66,12 +96,20 @@ def seed_initial_data(db: Session) -> None:
 
     for item in QUEUE_TEMPLATES:
         template = db.scalar(select(MonitorTemplate).where(MonitorTemplate.code == item["code"]))
-        if template:
-            for field, value in item.items():
-                setattr(template, field, value)
-            template.is_system = True
-            template.is_active = True
-        else:
+        if not template:
             db.add(MonitorTemplate(**item, is_system=True, is_active=True))
+        else:
+            # Não sobrescreve customizações do usuário; preenche apenas campos Datadog ainda vazios.
+            changed = False
+            for field in (
+                "datadog_monitor_type",
+                "datadog_query_template",
+                "datadog_message_template",
+                "datadog_tags_template",
+                "datadog_options",
+            ):
+                if getattr(template, field, None) in (None, [], {}):
+                    setattr(template, field, item.get(field))
+                    changed = True
 
     db.commit()

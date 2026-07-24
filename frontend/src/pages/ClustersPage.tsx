@@ -20,7 +20,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { apiRequest } from '../services/api';
-import { Cluster, DiscoveryResult } from '../types/api';
+import { Cluster, JobHistory } from '../types/api';
 
 export default function ClustersPage() {
   const queryClient = useQueryClient();
@@ -28,12 +28,11 @@ export default function ClustersPage() {
   const { data: clusters = [], isLoading } = useQuery({ queryKey: ['clusters'], queryFn: () => apiRequest<Cluster[]>('/clusters') });
 
   const discoverMutation = useMutation({
-    mutationFn: (clusterId: number) => apiRequest<DiscoveryResult>(`/clusters/${clusterId}/discover-queues`, { method: 'POST' }),
-    onSuccess: (result) => {
-      setMessage(`Discovery executado: ${result.fetched} filas encontradas, ${result.created} criadas, ${result.marked_removed} removidas.`);
+    mutationFn: (clusterId: number) => apiRequest<JobHistory>(`/jobs/discovery/cluster/${clusterId}`, { method: 'POST' }),
+    onSuccess: (job) => {
+      setMessage(`Discovery enfileirado. Job #${job.id}. Acompanhe em Administração > Jobs.`);
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['clusters'] });
-      queryClient.invalidateQueries({ queryKey: ['queues'] });
-      queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
     },
     onError: (error) => setMessage(error instanceof Error ? error.message : 'Erro ao executar discovery'),
   });
@@ -51,7 +50,7 @@ export default function ClustersPage() {
           <Typography variant="h4" fontWeight={800}>
             Clusters RabbitMQ
           </Typography>
-          <Typography color="text.secondary">Cadastro, teste de conexão e discovery manual de queues.</Typography>
+          <Typography color="text.secondary">Cadastro, teste de conexão e enfileiramento de discovery de queues.</Typography>
         </Box>
         <Button component={RouterLink} to="/clusters/new" variant="contained" startIcon={<Add />} sx={{ fontWeight: 800 }}>
           NOVO CLUSTER
@@ -93,7 +92,7 @@ export default function ClustersPage() {
                       <WifiTethering />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="Forçar discovery de queues">
+                  <Tooltip title="Enfileirar discovery de queues">
                     <IconButton onClick={() => discoverMutation.mutate(cluster.id)}>
                       <Refresh />
                     </IconButton>

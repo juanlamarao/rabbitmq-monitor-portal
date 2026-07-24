@@ -2,15 +2,16 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas.cluster import ClusterCreate, ClusterRead, ClusterUpdate, DiscoveryResult
+from app.schemas.cluster import ClusterCreate, ClusterRead, ClusterUpdate
+from app.schemas.job import JobHistoryRead
 from app.services.cluster_service import (
     create_cluster,
-    discover_queues,
     get_cluster,
     list_clusters,
     test_cluster_connection,
     update_cluster,
 )
+from app.services.job_service import enqueue_cluster_discovery_job
 
 router = APIRouter()
 
@@ -40,6 +41,7 @@ async def route_test_cluster_connection(cluster_id: int, db: Session = Depends(g
     return await test_cluster_connection(db, cluster_id)
 
 
-@router.post("/{cluster_id}/discover-queues", response_model=DiscoveryResult)
-async def route_discover_queues(cluster_id: int, db: Session = Depends(get_db)):
-    return await discover_queues(db, cluster_id)
+@router.post("/{cluster_id}/discover-queues", response_model=JobHistoryRead, status_code=202)
+def route_discover_queues(cluster_id: int, db: Session = Depends(get_db)):
+    job, _ = enqueue_cluster_discovery_job(db, cluster_id, source="cluster_screen", skip_if_active=True)
+    return job

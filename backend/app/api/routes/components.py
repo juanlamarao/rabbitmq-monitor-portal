@@ -2,8 +2,10 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.schemas.bulk_actions import QueueBulkActionRequest, QueueBulkApplyRead, QueueBulkPreviewRead, QueueBulkPreviewRequest
 from app.schemas.component import QueueRead, QueueUpdate
 from app.schemas.monitor_template import QueueMonitorTemplateCreate, QueueMonitorTemplateRead, QueueMonitorTemplateUpdate
+from app.services.bulk_action_service import apply_bulk_action, preview_bulk_queues
 from app.services.component_service import list_queues, update_queue
 from app.services.template_service import (
     add_queue_template_binding,
@@ -34,6 +36,16 @@ def route_list_queues(
         template_id=template_id,
         customized_only=customized_only,
     )
+
+
+@router.post("/queues/bulk/preview", response_model=QueueBulkPreviewRead)
+def route_preview_bulk_queues(payload: QueueBulkPreviewRequest, db: Session = Depends(get_db)):
+    return preview_bulk_queues(db, payload.filters)
+
+
+@router.post("/queues/bulk/apply", response_model=QueueBulkApplyRead)
+def route_apply_bulk_queues(payload: QueueBulkActionRequest, db: Session = Depends(get_db)):
+    return apply_bulk_action(db, payload)
 
 
 @router.put("/queues/{queue_id}", response_model=QueueRead)

@@ -5,6 +5,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import AppLayout from './components/AppLayout';
 import AdminPage from './pages/AdminPage';
 import AuditLogPage from './pages/AuditLogPage';
+import BulkActionsPage from './pages/BulkActionsPage';
 import ClusterFormPage from './pages/ClusterFormPage';
 import ClustersPage from './pages/ClustersPage';
 import DashboardPage from './pages/DashboardPage';
@@ -12,7 +13,10 @@ import QueuesPage from './pages/QueuesPage';
 import ReportsPage from './pages/ReportsPage';
 import SREGroupsPage from './pages/SREGroupsPage';
 import DatadogOrgsPage from './pages/DatadogOrgsPage';
+import DatadogSyncPage from './pages/DatadogSyncPage';
 import TemplatesPage from './pages/TemplatesPage';
+import JobsPage from './pages/JobsPage';
+import PublicQueueReferencePage from './pages/PublicQueueReferencePage';
 
 const queryClient = new QueryClient();
 
@@ -46,22 +50,33 @@ export default function App() {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <BrowserRouter>
-          <AppLayout mode={mode} onToggleMode={() => setMode((value) => (value === 'dark' ? 'light' : 'dark'))}>
-            <Routes>
-              <Route path="/" element={<DashboardPage />} />
-              <Route path="/clusters" element={<ClustersPage />} />
-              <Route path="/clusters/new" element={<ClusterFormPage />} />
-              <Route path="/clusters/:clusterId/edit" element={<ClusterFormPage />} />
-              <Route path="/clusters/:clusterId/view" element={<ClusterFormPage />} />
-              <Route path="/queues" element={<QueuesPage />} />
-              <Route path="/templates" element={<TemplatesPage />} />
-              <Route path="/reports" element={<ReportsPage />} />
-              <Route path="/audit-logs" element={<AuditLogPage />} />
-              <Route path="/admin" element={<AdminPage />} />
-              <Route path="/admin/sre-groups" element={<SREGroupsPage />} />
-              <Route path="/admin/datadog-orgs" element={<DatadogOrgsPage />} />
-            </Routes>
-          </AppLayout>
+          <Routes>
+            <Route path="/public/queue-reference" element={<PublicQueueReferencePage />} />
+            <Route
+              path="*"
+              element={
+                <AppLayout mode={mode} onToggleMode={() => setMode((value) => (value === 'dark' ? 'light' : 'dark'))}>
+                  <Routes>
+                    <Route path="/" element={<DashboardPage />} />
+                    <Route path="/clusters" element={<ClustersPage />} />
+                    <Route path="/clusters/new" element={<ClusterFormPage />} />
+                    <Route path="/clusters/:clusterId/edit" element={<ClusterFormPage />} />
+                    <Route path="/clusters/:clusterId/view" element={<ClusterFormPage />} />
+                    <Route path="/queues" element={<QueuesPage />} />
+                    <Route path="/templates" element={<TemplatesPage />} />
+                    <Route path="/bulk-actions" element={<BulkActionsPage />} />
+                    <Route path="/reports" element={<ReportsPage />} />
+                    <Route path="/audit-logs" element={<AuditLogPage />} />
+                    <Route path="/admin" element={<AdminPage />} />
+                    <Route path="/admin/sre-groups" element={<SREGroupsPage />} />
+                    <Route path="/admin/datadog-orgs" element={<DatadogOrgsPage />} />
+                    <Route path="/admin/jobs" element={<JobsPage />} />
+                    <Route path="/admin/datadog-sync" element={<DatadogSyncPage />} />
+                  </Routes>
+                </AppLayout>
+              }
+            />
+          </Routes>
         </BrowserRouter>
       </ThemeProvider>
     </QueryClientProvider>

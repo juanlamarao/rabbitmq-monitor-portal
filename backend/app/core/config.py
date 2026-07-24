@@ -22,7 +22,10 @@ class Settings(BaseSettings):
     ldap_bind_password: str = "admin"
     ldap_search_base: str = "ou=People,dc=example,dc=local"
     ldap_use_ssl: bool = False
-    directory_cache_refresh_interval_seconds: int = 300
+    directory_cache_refresh_interval_seconds: int = 3600
+    discovery_scheduler_interval_seconds: int = 300
+    removed_queue_cleanup_interval_seconds: int = 86400
+    removed_queue_retention_days: int = 60
 
     rabbitmq_demo_host: str = "rabbitmq"
     rabbitmq_demo_port: int = 15672
@@ -30,6 +33,7 @@ class Settings(BaseSettings):
     rabbitmq_demo_password: str = "guest"
 
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
+    portal_public_base_url: str = "http://localhost:3000"
 
     # Fernet key opcional. Em produção, defina uma chave fixa e segura.
     # Gere com: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"

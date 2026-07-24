@@ -1,6 +1,6 @@
 {
   "name": "rabbitmq-monitor-portal-frontend",
-  "version": "0.1.6",
+  "version": "0.5.1",
   "private": true,
   "type": "module",
   "scripts": {
