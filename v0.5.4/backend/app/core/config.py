@@ -22,9 +22,10 @@ class Settings(BaseSettings):
     ldap_bind_password: str = "admin"
     ldap_search_base: str = "ou=People,dc=example,dc=local"
     ldap_use_ssl: bool = False
-    directory_cache_refresh_interval_seconds: int = 3600
-    discovery_scheduler_interval_seconds: int = 86400 # 300
+    directory_cache_refresh_interval_seconds: int = 86400
+    discovery_scheduler_interval_seconds: int = 86400
     removed_queue_cleanup_interval_seconds: int = 86400
+    datadog_sync_interval_seconds: int = 86400
     removed_queue_retention_days: int = 60
 
     rabbitmq_demo_host: str = "rabbitmq"

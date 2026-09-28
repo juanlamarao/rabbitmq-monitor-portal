@@ -1,0 +1,163 @@
+dn: ou=People,dc=example,dc=local
+objectClass: organizationalUnit
+ou: People
+
+dn: uid=ana.silva,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: ana.silva
+givenName: Ana
+sn: Silva
+cn: Ana Silva
+mail: ana.silva@example.com
+
+dn: uid=bruno.santos,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: bruno.santos
+givenName: Bruno
+sn: Santos
+cn: Bruno Santos
+mail: bruno.santos@example.com
+
+dn: uid=carla.oliveira,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: carla.oliveira
+givenName: Carla
+sn: Oliveira
+cn: Carla Oliveira
+mail: carla.oliveira@example.com
+
+dn: uid=daniel.pereira,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: daniel.pereira
+givenName: Daniel
+sn: Pereira
+cn: Daniel Pereira
+mail: daniel.pereira@example.com
+
+dn: uid=elisa.costa,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: elisa.costa
+givenName: Elisa
+sn: Costa
+cn: Elisa Costa
+mail: elisa.costa@example.com
+
+dn: uid=fernando.almeida,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: fernando.almeida
+givenName: Fernando
+sn: Almeida
+cn: Fernando Almeida
+mail: fernando.almeida@example.com
+
+dn: uid=gabriela.rocha,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: gabriela.rocha
+givenName: Gabriela
+sn: Rocha
+cn: Gabriela Rocha
+mail: gabriela.rocha@example.com
+
+dn: uid=henrique.martins,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: henrique.martins
+givenName: Henrique
+sn: Martins
+cn: Henrique Martins
+mail: henrique.martins@example.com
+
+dn: uid=isabela.lima,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: isabela.lima
+givenName: Isabela
+sn: Lima
+cn: Isabela Lima
+mail: isabela.lima@example.com
+
+dn: uid=joao.ferreira,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: joao.ferreira
+givenName: Joao
+sn: Ferreira
+cn: Joao Ferreira
+mail: joao.ferreira@example.com
+
+dn: uid=karina.mendes,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: karina.mendes
+givenName: Karina
+sn: Mendes
+cn: Karina Mendes
+mail: karina.mendes@example.com
+
+dn: uid=lucas.ribeiro,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: lucas.ribeiro
+givenName: Lucas
+sn: Ribeiro
+cn: Lucas Ribeiro
+mail: lucas.ribeiro@example.com
+
+dn: uid=mariana.gomes,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: mariana.gomes
+givenName: Mariana
+sn: Gomes
+cn: Mariana Gomes
+mail: mariana.gomes@example.com
+
+dn: uid=nicolas.barros,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: nicolas.barros
+givenName: Nicolas
+sn: Barros
+cn: Nicolas Barros
+mail: nicolas.barros@example.com
+
+dn: uid=patricia.nunes,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: patricia.nunes
+givenName: Patricia
+sn: Nunes
+cn: Patricia Nunes
+mail: patricia.nunes@example.com
+
+dn: uid=rafael.moreira,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: rafael.moreira
+givenName: Rafael
+sn: Moreira
+cn: Rafael Moreira
+mail: rafael.moreira@example.com
+
+dn: uid=sabrina.cardoso,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: sabrina.cardoso
+givenName: Sabrina
+sn: Cardoso
+cn: Sabrina Cardoso
+mail: sabrina.cardoso@example.com
+
+dn: uid=thiago.araujo,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: thiago.araujo
+givenName: Thiago
+sn: Araujo
+cn: Thiago Araujo
+mail: thiago.araujo@example.com
+
+dn: uid=vanessa.teixeira,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: vanessa.teixeira
+givenName: Vanessa
+sn: Teixeira
+cn: Vanessa Teixeira
+mail: vanessa.teixeira@example.com
+
+dn: uid=william.carvalho,ou=People,dc=example,dc=local
+objectClass: inetOrgPerson
+uid: william.carvalho
+givenName: William
+sn: Carvalho
+cn: William Carvalho
+mail: william.carvalho@example.com
