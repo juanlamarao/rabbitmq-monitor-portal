@@ -1,0 +1,10 @@
+init_config:
+
+instances:
+  - prometheus_plugin:
+      url: http://rabbitmq:15692
+      unaggregated_endpoint: detailed?family=queue_coarse_metrics&family=queue_consumer_count&family=node_coarse_metrics
+    tags:
+      - rabbitmq_cluster:local-rabbitmq
+      - env:dev
+      - source:monitor-portal-local

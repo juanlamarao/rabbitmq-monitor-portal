@@ -1,0 +1,10 @@
+html,body,#root{min-height:100%;margin:0}
+body{-webkit-font-smoothing:antialiased}
+/* Keep existing filter-grid spacing compatible with the application pages. */
+.MuiGrid-container.MuiGrid-spacing-xs-2>.MuiGrid-item{padding-left:0!important;padding-right:16px!important}
+.main-page-filters .MuiGrid-container.MuiGrid-spacing-xs-2>.MuiGrid-item{padding-left:16px!important;padding-right:16px!important}
+.MuiDialogActions-root{padding:16px!important}
+.rmp-particles-field{background:radial-gradient(ellipse at 90% 18%,rgba(158,200,252,.13),transparent 45%)}
+.rmp-particle{position:absolute;bottom:-20px;left:var(--left);height:var(--size);width:var(--size);border-radius:50%;background:#3186CF;opacity:0;animation:rmp-particle-up var(--duration) linear var(--delay) infinite}
+@keyframes rmp-particle-up{0%{transform:translate(0,0);opacity:0}15%{opacity:.22}85%{opacity:.18}100%{transform:translate(32px,-110vh);opacity:0}}
+@media (prefers-reduced-motion:reduce){.rmp-particle{animation:none;opacity:.12;bottom:30%}}

@@ -1,0 +1,252 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1672 941" width="1672" height="941" role="img" aria-labelledby="svgt svgd">
+<title id="svgt">Monitor Portal - Arquitetura Atualizada</title>
+<desc id="svgd">Reprodução vetorial editável da arquitetura AWS EKS Monitor Portal, com textos SVG reais, componentes, fluxos e ícones vetoriais.</desc>
+<defs>
+
+<linearGradient id="pageBg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#f9fdff"/><stop offset=".43" stop-color="#fff"/><stop offset="1" stop-color="#fff"/></linearGradient>
+<radialGradient id="pageGlow"><stop offset="0" stop-color="#d2ecff" stop-opacity=".85"/><stop offset="1" stop-color="#f8fcff" stop-opacity="0"/></radialGradient>
+<linearGradient id="navBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#238fdf"/><stop offset=".55" stop-color="#0754b5"/><stop offset="1" stop-color="#073b8b"/></linearGradient>
+<linearGradient id="mainBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2377c7"/><stop offset=".53" stop-color="#0950a2"/><stop offset="1" stop-color="#033785"/></linearGradient>
+<linearGradient id="mainPale" x1="0" y1="0" x2="1" y2=".95"><stop offset="0" stop-color="#f2faff"/><stop offset=".52" stop-color="#e7f5ff"/><stop offset="1" stop-color="#d8edfd"/></linearGradient>
+<radialGradient id="mainLight"><stop offset="0" stop-color="#ffffff" stop-opacity=".63"/><stop offset="1" stop-color="#b6ddfa" stop-opacity="0"/></radialGradient>
+<linearGradient id="sidePale" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4fbff"/><stop offset="1" stop-color="#e4f4ff"/></linearGradient>
+<linearGradient id="cardBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".67" stop-color="#f9fcff"/><stop offset="1" stop-color="#e9f4fd"/></linearGradient>
+<linearGradient id="whiteCard" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#eaf6ff"/></linearGradient>
+<linearGradient id="azure" x1="0" y1="0" x2=".93" y2="1"><stop offset="0" stop-color="#2bafff"/><stop offset=".45" stop-color="#097fda"/><stop offset="1" stop-color="#0753b5"/></linearGradient>
+<linearGradient id="orange" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffae52"/><stop offset=".55" stop-color="#ec7f19"/><stop offset="1" stop-color="#ba510a"/></linearGradient>
+<linearGradient id="pill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e6f5ff"/><stop offset="1" stop-color="#cce8ff"/></linearGradient>
+<filter id="softShadow" x="-25%" y="-30%" width="160%" height="180%"><feGaussianBlur in="SourceAlpha" stdDeviation="5" result="blur"/><feOffset dy="7" result="off"/><feComponentTransfer in="off" result="shadow"><feFuncA type="linear" slope=".19"/></feComponentTransfer><feMerge><feMergeNode in="shadow"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<filter id="slimShadow" x="-15%" y="-30%" width="130%" height="160%"><feGaussianBlur in="SourceAlpha" stdDeviation="2.5" result="blur"/><feOffset dy="3" result="off"/><feComponentTransfer in="off" result="shadow"><feFuncA type="linear" slope=".17"/></feComponentTransfer><feMerge><feMergeNode in="shadow"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<clipPath id="mainClip"><rect x="425" y="139" width="860" height="651" rx="25"/></clipPath>
+<clipPath id="leftClip"><rect x="9" y="173" width="249" height="575" rx="23"/></clipPath>
+<marker id="arrowBlue" markerWidth="5.4" markerHeight="5.4" refX="4.2" refY="2.7" orient="auto-start-reverse" markerUnits="strokeWidth"><path d="M0 0 L5.2 2.7 L0 5.4 Z" fill="#065acb"/></marker>
+
+<!-- Reusable original vector artwork: all icons are paths/shapes, not bitmaps. -->
+<symbol id="users" viewBox="0 0 64 64">
+ <circle cx="23" cy="19" r="11.6" fill="url(#azure)"/><path d="M4 53V48C4 36 12 31 22 31C30 31 36 35 38 42L38 53Z" fill="url(#azure)"/>
+ <circle cx="44.6" cy="25" r="8.8" fill="url(#azure)"/><path d="M38 40C41 35 45 34 49 34C57 34 61 41 61 49V53H39V45" fill="url(#azure)"/>
+</symbol>
+<symbol id="whiteUsers" viewBox="0 0 64 64">
+ <circle cx="23" cy="18" r="11.8" fill="white"/><path d="M3 53V47C3 36 11 31 23 31S41 37 41 48V53Z" fill="white"/>
+ <circle cx="48" cy="21" r="9.8" fill="#fff"/><path d="M42 36C47 32 54 32 60 38V53H44V49" fill="white"/>
+</symbol>
+<symbol id="browser" viewBox="0 0 64 64">
+ <rect x="3.5" y="7" width="57" height="51" rx="6" fill="url(#whiteCard)" stroke="#0963bd" stroke-width="3.4"/>
+ <path d="M5.5 14Q5.5 9 12 9H53Q59 9 59 15V23H5.5Z" fill="url(#azure)"/>
+ <circle cx="13" cy="16" r="2.5" fill="white"/><circle cx="21" cy="16" r="2.5" fill="white"/><circle cx="29" cy="16" r="2.5" fill="white"/>
+ <path d="M38 16H53" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+</symbol>
+<symbol id="browserGlobe" viewBox="0 0 64 64">
+ <use href="#browser" x="0" y="0" width="64" height="64"/>
+ <circle cx="34" cy="39" r="16" stroke="#0677d5" stroke-width="2.8" fill="none"/>
+ <ellipse cx="34" cy="39" rx="7.2" ry="16" stroke="#0677d5" stroke-width="2.1" fill="none"/>
+ <path d="M18 39H50 M22 31H46 M22 47H46 M34 23V55" stroke="#0677d5" stroke-width="2" fill="none"/>
+</symbol>
+<symbol id="monitorCode" viewBox="0 0 64 64">
+ <rect x="7" y="8" width="50" height="40" rx="3.6" stroke="#0781dd" stroke-width="4" fill="url(#whiteCard)"/>
+ <path d="M25 23L17 29L25 35 M39 23L47 29L39 35 M35 19L29 39" fill="none" stroke="#0781dd" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+ <path d="M32 48V56 M23 57H41" stroke="#075ab6" stroke-width="4" stroke-linecap="round"/>
+</symbol>
+<symbol id="network" viewBox="0 0 64 64">
+ <circle cx="32" cy="9" r="6.2" stroke="#0852ab" stroke-width="3.4" fill="none"/>
+ <path d="M32 15.5V29 M14 47V38Q14 30 22 30H42Q50 30 50 38V47 M32 29V47" fill="none" stroke="#0852ab" stroke-width="3.2" stroke-linejoin="round"/>
+ <circle cx="14" cy="52" r="6.5" stroke="#0752ad" stroke-width="3.5" fill="#fff"/><circle cx="32" cy="52" r="6.5" stroke="#0752ad" stroke-width="3.5" fill="#fff"/><circle cx="50" cy="52" r="6.5" stroke="#0752ad" stroke-width="3.5" fill="#fff"/>
+</symbol>
+<symbol id="gear" viewBox="0 0 64 64">
+ <path d="M27 3H37L39 10L45 12L51 8L58 15L54 21L56 27L63 29V38L55 40L53 46L58 52L51 59L44 54L38 56L36 63H27L25 56L19 54L13 59L6 52L11 46L9 40L2 38V29L9 27L11 21L6 15L13 8L19 12L25 10Z" fill="url(#azure)"/>
+ <circle cx="32" cy="33" r="16" fill="#f9fdff"/>
+</symbol>
+<symbol id="gears" viewBox="0 0 80 64">
+ <use href="#gear" x="5" y="21" width="43" height="43"/><use href="#gear" x="37" y="0" width="37" height="37"/>
+</symbol>
+<symbol id="database" viewBox="0 0 64 64">
+ <ellipse cx="32" cy="11.5" rx="25.7" ry="9.3" fill="#ebf8ff" stroke="#0392ed" stroke-width="3.2"/>
+ <path d="M6.3 15V27C6.3 39 57.7 39 57.7 27V15C57.7 28 6.3 28 6.3 15Z" fill="url(#azure)" stroke="#fff" stroke-width="2"/>
+ <path d="M6.3 30V42C6.3 54 57.7 54 57.7 42V30C57.7 43 6.3 43 6.3 30Z" fill="url(#azure)" stroke="#fff" stroke-width="2"/>
+ <path d="M6.3 45V53C6.3 67 57.7 67 57.7 53V45C57.7 58 6.3 58 6.3 45Z" fill="url(#azure)" stroke="#fff" stroke-width="2"/>
+</symbol>
+<symbol id="layers" viewBox="0 0 64 64">
+ <path d="M5 22L32 8L59 22L32 36Z M5 34L32 48L59 34 M5 46L32 60L59 46" fill="none" stroke="#068dea" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</symbol>
+<symbol id="cycle" viewBox="0 0 64 64">
+ <path d="M6 30A26 26 0 0 1 53 18 M53 18V5 M53 18H40" fill="none" stroke="#0598eb" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+ <path d="M58 34A26 26 0 0 1 11 46 M11 46V59 M11 46H24" fill="none" stroke="#0078d1" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+</symbol>
+<symbol id="calendar" viewBox="0 0 64 64">
+ <rect x="8" y="13" width="48" height="45" rx="5" fill="none" stroke="#0781d8" stroke-width="4"/>
+ <path d="M8 26H56 M20 7V18 M44 7V18" stroke="#0781d8" stroke-width="4.2" stroke-linecap="round"/>
+ <path d="M19 35H25 M33 35H43 M19 43H27 M34 43H41" stroke="#0781d8" stroke-width="3.5" stroke-linecap="round"/>
+</symbol>
+<symbol id="shieldPerson" viewBox="0 0 64 64">
+ <path d="M32 3L60 14V33C60 47 49 55 32 62C15 55 4 47 4 33V14Z" fill="url(#azure)" stroke="#0c7ee0" stroke-width="1.5"/>
+ <circle cx="32" cy="25" r="8.8" fill="white"/><path d="M17 48C18 36 26 35 32 35S46 36 47 48Z" fill="white"/>
+</symbol>
+<symbol id="servers" viewBox="0 0 64 64">
+ <rect x="3" y="9" width="58" height="21" rx="5" fill="url(#orange)"/>
+ <rect x="3" y="34" width="58" height="21" rx="5" fill="url(#orange)"/>
+ <circle cx="13" cy="19.5" r="3.4" fill="white"/><circle cx="23" cy="19.5" r="3.4" fill="white"/>
+ <circle cx="13" cy="44.5" r="3.4" fill="white"/><circle cx="23" cy="44.5" r="3.4" fill="white"/>
+ <path d="M39 19.5H52 M39 44.5H52" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+</symbol>
+<symbol id="datadog" viewBox="0 0 64 64">
+ <rect x="5" y="8" width="54" height="42" rx="4" fill="none" stroke="#0579d6" stroke-width="4.7"/>
+ <path d="M32 50V59 M21 60H43" fill="none" stroke="#0579d6" stroke-width="4" stroke-linecap="round"/>
+ <rect x="16" y="34" width="7" height="8" fill="#087dd4"/><rect x="28" y="27" width="7" height="15" fill="#087dd4"/><rect x="40" y="18" width="7" height="24" fill="#087dd4"/>
+</symbol>
+<symbol id="search" viewBox="0 0 64 64">
+ <circle cx="27" cy="26" r="17.5" stroke="#078ce5" stroke-width="4.3" fill="none"/>
+ <path d="M40 40L57 57" stroke="#078ce5" stroke-width="5" stroke-linecap="round"/>
+</symbol>
+<symbol id="checkShield" viewBox="0 0 64 64">
+ <path d="M32 4L55 14V33C55 46 43 55 32 61C21 55 9 46 9 33V14Z" fill="none" stroke="#0678d1" stroke-width="4" stroke-linejoin="round"/>
+ <path d="M20 33L29 41L44 25" fill="none" stroke="#0678d1" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</symbol>
+<symbol id="kubernetes" viewBox="0 0 64 64">
+ <circle cx="32" cy="32" r="23" fill="none" stroke="white" stroke-width="3.4"/>
+ <path d="M32 0V64 M0 32H64 M8 11L56 53 M56 11L8 53" stroke="white" stroke-width="3.6" stroke-linecap="round"/>
+ <path d="M32 18L46 28L40 45L23 45L18 28Z" fill="#145ea8" stroke="white" stroke-width="2.4" stroke-linejoin="round"/>
+ <circle cx="32" cy="32" r="5" fill="white"/>
+</symbol>
+</defs>
+<rect x="0" y="0" width="1672" height="941" rx="0" fill="url(#pageBg)" stroke="none" stroke-width="1" />
+<ellipse cx="0" cy="-6" rx="250" ry="170" fill="url(#pageGlow)"/>
+<path d="M0 0H231L159 72H0Z" fill="#cae9fe" stroke="none" stroke-width="1" opacity=".8"/>
+<path d="M0 0H167L91 73H0Z" fill="#2a96e7" stroke="none" stroke-width="1" opacity=".88"/>
+<path d="M0 0H117L0 121Z" fill="#b9dcf7" stroke="none" stroke-width="1" opacity=".75"/>
+<path d="M0 125L102 22L130 0H173L17 133H0Z" fill="#f3fbff" stroke="none" stroke-width="1" opacity=".77"/>
+<path d="M1555 941L1666 830H1672V941Z" fill="#dcedfb" stroke="none" stroke-width="1" opacity=".75"/>
+<path d="M1608 941L1672 879V941Z" fill="#a7d7f6" stroke="none" stroke-width="1" opacity=".73"/>
+<path d="M1653 941L1672 922V941Z" fill="#127ecb" stroke="none" stroke-width="1" />
+<text x="836" y="50" font-size="48" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#072a5c" text-anchor="middle" letter-spacing="-.6">Monitor Portal - Arquitetura Atualizada</text>
+<text x="836" y="90" font-size="29" font-weight="400" font-family="Inter, Arial, sans-serif" fill="#415d7b" text-anchor="middle" >Implantação orientada a EKS com integrações externas</text>
+<rect x="9" y="173" width="249" height="575" rx="23" fill="url(#sidePale)" stroke="#81b7eb" stroke-width="1.7" />
+<g clip-path="url(#leftClip)">
+<rect x="9" y="172" width="249" height="66" rx="22" fill="url(#navBlue)" stroke="#1e7cd1" stroke-width="1.8" />
+</g>
+<use href="#whiteUsers" x="35" y="181" width="50" height="50" />
+<text x="94" y="213" font-size="29" font-weight="800" font-family="Inter, Arial, sans-serif" fill="white" >Usuários</text>
+<rect x="425" y="139" width="860" height="651" rx="25" fill="url(#mainPale)" stroke="#59a1e9" stroke-width="2.2" />
+<g clip-path="url(#mainClip)">
+<ellipse cx="864" cy="388" rx="440" ry="420" fill="url(#mainLight)" opacity=".6"/>
+<rect x="425" y="139" width="860" height="62" rx="20" fill="url(#mainBlue)" stroke="none" stroke-width="1" />
+<path d="M425 200C484 184 539 198 608 197H1211C1240 195 1267 192 1285 200V207H425Z" fill="url(#mainPale)" stroke="none" stroke-width="1" />
+</g>
+<use href="#kubernetes" x="459" y="146" width="55" height="55" />
+<text x="530" y="175" font-size="29" font-weight="800" font-family="Inter, Arial, sans-serif" fill="white" >AWS EKS / Namespace Monitor Portal</text>
+<rect x="679" y="206" width="370" height="34" rx="16" fill="url(#pill)" stroke="#64b4fa" stroke-width="1.35" />
+<text x="864" y="229" font-size="19.2" font-weight="700" font-family="Inter, Arial, sans-serif" fill="#09234d" text-anchor="middle" >Mesma base para dev, uat e prod</text>
+<path d="M565 312V274Q565 264 576 264H1295Q1305 264 1305 254V230Q1305 220 1316 220H1348" fill="none" stroke="#0758c9" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)"/>
+<path d="M851 312V286Q851 278 859 278H1295Q1305 278 1305 288V342Q1305 352 1316 352H1348" fill="none" stroke="#0758c9" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)"/>
+<path d="M1305 389H1348" fill="none" stroke="#0758c9" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)"/>
+<path d="M1302 390V474Q1302 486 1314 486H1348" fill="none" stroke="#0758c9" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)"/>
+<path d="M950 338H1259Q1275 338 1275 355V521Q1275 533 1287 533H1348" fill="none" stroke="#0758c9" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)" marker-start="url(#arrowBlue)"/>
+<path d="M1115 681H1348" fill="none" stroke="#0758c9" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)"/>
+<path d="M695 749V754H1158Q1174 754 1174 743V718Q1174 707 1185 707H1348" fill="none" stroke="#0758c9" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)"/>
+<path d="M232 380H265Q276 380 276 391V472Q276 486 291 486H303" fill="none" stroke="#0758c9" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)"/>
+<path d="M232 578H266Q276 578 276 568V498Q276 486 291 486H303" fill="none" stroke="#0758c9" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)"/>
+<path d="M412 486H450" fill="none" stroke="#0758c9" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)"/>
+<path d="M675 363H752" fill="none" stroke="#0758c9" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)" marker-start="url(#arrowBlue)"/>
+<path d="M948 390H1027" fill="none" stroke="#0758c9" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)" marker-start="url(#arrowBlue)"/>
+<path d="M1271 397H1228" fill="none" stroke="#0758c9" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)"/>
+<path d="M794 414V445Q794 452 786 452H712Q702 452 702 463V509" fill="none" stroke="#0758c9" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)"/>
+<path d="M861 414V448Q861 452 869 452H932Q939 452 939 461V508" fill="none" stroke="#0758c9" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)"/>
+<path d="M1032 415H994Q985 415 985 424V510" fill="none" stroke="#0758c9" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)"/>
+<path d="M1152 520V556Q1152 565 1143 565H1118" fill="none" stroke="#0758c9" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)"/>
+<path d="M695 615V641" fill="none" stroke="#0758c9" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)" marker-start="url(#arrowBlue)"/>
+<path d="M937 615V640" fill="none" stroke="#0758c9" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)" marker-start="url(#arrowBlue)"/>
+<path d="M687 746H1241Q1252 746 1252 734V718Q1252 707 1264 707H1348" fill="none" stroke="#0758c9" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)"/>
+<path d="M687 747V723" fill="none" stroke="#0758c9" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)"/>
+<path d="M981 747V724" fill="none" stroke="#0758c9" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrowBlue)"/>
+<rect x="32" y="309" width="202" height="153" rx="15" fill="url(#cardBg)" stroke="#70a7dc" stroke-width="1.5" filter="url(#softShadow)"/>
+<use href="#users" x="64" y="330" width="58" height="57" />
+<use href="#browser" x="119" y="333" width="74" height="71" />
+<text x="132" y="424.0" font-size="21.5" font-weight="750" font-family="Inter, Arial, sans-serif" fill="#081a3e" text-anchor="middle" >Usuários do</text>
+<text x="132" y="448.5" font-size="21.5" font-weight="750" font-family="Inter, Arial, sans-serif" fill="#081a3e" text-anchor="middle" >Portal</text>
+<rect x="32" y="503" width="202" height="166" rx="16" fill="url(#cardBg)" stroke="#6c9fd8" stroke-width="1.5" filter="url(#softShadow)"/>
+<use href="#browserGlobe" x="92" y="526" width="87" height="80" />
+<text x="134" y="625" font-size="21" font-weight="750" font-family="Inter, Arial, sans-serif" fill="#081a3e" text-anchor="middle" >Página pública</text>
+<text x="134" y="648" font-size="21" font-weight="750" font-family="Inter, Arial, sans-serif" fill="#081a3e" text-anchor="middle" >de referência</text>
+<rect x="301" y="410" width="112" height="150" rx="16" fill="url(#cardBg)" stroke="#084d9c" stroke-width="1.5" filter="url(#softShadow)"/>
+<use href="#network" x="328" y="424" width="59" height="59" />
+<text x="357" y="499" font-size="20.5" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#06183c" text-anchor="middle" >Ingress /</text>
+<text x="357" y="522" font-size="20.5" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#06183c" text-anchor="middle" >Load</text>
+<text x="357" y="545" font-size="20.5" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#06183c" text-anchor="middle" >Balancer</text>
+<rect x="455" y="312" width="223" height="103" rx="14" fill="url(#cardBg)" stroke="#a5b9cc" stroke-width="1.55" filter="url(#softShadow)"/>
+<use href="#monitorCode" x="476" y="333" width="67" height="65" />
+<text x="560" y="350" font-size="21.5" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#06183c" >Frontend</text>
+<text x="560" y="371" font-size="19.2" font-weight="400" font-family="Inter, Arial, sans-serif" fill="#0a1e41" >React +</text>
+<text x="560" y="393" font-size="19.2" font-weight="400" font-family="Inter, Arial, sans-serif" fill="#0a1e41" >TypeScript</text>
+<rect x="754" y="313" width="195" height="102" rx="13" fill="url(#cardBg)" stroke="#9dabb8" stroke-width="1.55" filter="url(#softShadow)"/>
+<use href="#gear" x="778" y="337" width="59" height="59" />
+<text x="863" y="353" font-size="23" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#07193a" >API</text>
+<text x="863" y="376" font-size="20" font-weight="400" font-family="Inter, Arial, sans-serif" fill="#071a3c" >FastAPI</text>
+<rect x="1030" y="358" width="198" height="77" rx="12" fill="url(#cardBg)" stroke="#a2afc1" stroke-width="1.55" filter="url(#softShadow)"/>
+<use href="#gears" x="1057" y="365" width="61" height="57" />
+<text x="1126" y="398" font-size="20.5" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#061941" >Worker</text>
+<rect x="1038" y="451" width="192" height="68" rx="12" fill="url(#cardBg)" stroke="#9da9b5" stroke-width="1.55" filter="url(#softShadow)"/>
+<use href="#calendar" x="1067" y="464" width="46" height="46" />
+<text x="1133" y="490" font-size="19" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#07183d" >Scheduler</text>
+<rect x="575" y="509" width="242" height="95" rx="14" fill="url(#cardBg)" stroke="#9aaab9" stroke-width="1.55" filter="url(#softShadow)"/>
+<use href="#database" x="596" y="525" width="67" height="67" />
+<text x="680" y="548" font-size="22" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#081942" >MySQL</text>
+<text x="680" y="574" font-size="16.4" font-weight="400" font-family="Inter, Arial, sans-serif" fill="#091a3c" >Fonte da verdade</text>
+<rect x="852" y="509" width="265" height="95" rx="13" fill="url(#cardBg)" stroke="#a5b4c4" stroke-width="1.55" filter="url(#softShadow)"/>
+<use href="#layers" x="882" y="524" width="73" height="70" />
+<text x="965" y="548" font-size="22" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#091a42" >Redis</text>
+<text x="965" y="568.0" font-size="16.2" font-weight="400" font-family="Inter, Arial, sans-serif" fill="#091a3d" >Sessões, cache e</text>
+<text x="965" y="586.5" font-size="16.2" font-weight="400" font-family="Inter, Arial, sans-serif" fill="#091a3d" >fila de jobs</text>
+<rect x="556" y="650" width="262" height="72" rx="12" fill="url(#cardBg)" stroke="#a0aebb" stroke-width="1.55" filter="url(#softShadow)"/>
+<use href="#layers" x="578" y="658" width="60" height="58" />
+<text x="650" y="690" font-size="20.2" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#081b40" >Sync Dispatcher</text>
+<rect x="854" y="650" width="262" height="72" rx="12" fill="url(#cardBg)" stroke="#a0acb8" stroke-width="1.55" filter="url(#softShadow)"/>
+<use href="#cycle" x="885" y="655" width="56" height="57" />
+<text x="967" y="689" font-size="21" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#081941" >Reconciler</text>
+<rect x="1352" y="165" width="310" height="102" rx="17" fill="url(#cardBg)" stroke="#06458c" stroke-width="1.7" filter="url(#softShadow)"/>
+<use href="#shieldPerson" x="1375" y="186" width="65" height="66" />
+<text x="1448" y="208" font-size="21.3" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#06183c" >Microsoft Entra ID</text>
+<text x="1448" y="235" font-size="18.7" font-weight="400" font-family="Inter, Arial, sans-serif" fill="#061d46" >SSO / OAuth2</text>
+<rect x="1352" y="305" width="310" height="115" rx="16" fill="url(#cardBg)" stroke="#06468c" stroke-width="1.7" filter="url(#softShadow)"/>
+<use href="#servers" x="1372" y="325" width="63" height="65" />
+<text x="1450" y="339.0" font-size="21.2" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#061940" >RabbitMQ</text>
+<text x="1450" y="361.5" font-size="21.2" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#061940" >Clusters Externos</text>
+<text x="1450" y="383" font-size="16.3" font-weight="400" font-family="Inter, Arial, sans-serif" fill="#091a39" >Discovery de filas e leitura</text>
+<text x="1450" y="401" font-size="16.3" font-weight="400" font-family="Inter, Arial, sans-serif" fill="#091a39" >da Management API</text>
+<rect x="1352" y="451" width="310" height="104" rx="16" fill="url(#cardBg)" stroke="#06488d" stroke-width="1.7" filter="url(#softShadow)"/>
+<use href="#users" x="1371" y="475" width="66" height="66" />
+<text x="1451" y="485" font-size="20.8" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#06163c" >LDAP / Active</text>
+<text x="1451" y="508" font-size="20.8" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#06163c" >Directory Externo</text>
+<text x="1451" y="536" font-size="15.0" font-weight="400" font-family="Inter, Arial, sans-serif" fill="#081c42" >Cache de usuários e grupos</text>
+<rect x="1352" y="620" width="310" height="126" rx="16" fill="url(#cardBg)" stroke="#06448c" stroke-width="1.7" filter="url(#softShadow)"/>
+<use href="#datadog" x="1374" y="643" width="70" height="69" />
+<text x="1453" y="661" font-size="21.2" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#06163c" >Datadog Orgs</text>
+<text x="1453" y="684" font-size="21.2" font-weight="800" font-family="Inter, Arial, sans-serif" fill="#06163c" >Externas</text>
+<text x="1453" y="713" font-size="18.1" font-weight="400" font-family="Inter, Arial, sans-serif" fill="#06245a" >Monitores, sync e</text>
+<text x="1453" y="734" font-size="18.1" font-weight="400" font-family="Inter, Arial, sans-serif" fill="#06245a" >reconciliação</text>
+<rect x="9" y="828" width="1653" height="91" rx="20" fill="url(#sidePale)" stroke="#75abea" stroke-width="1.75" />
+<clipPath id="footerClip"><rect x="9" y="828" width="1653" height="91" rx="20"/></clipPath>
+<g clip-path="url(#footerClip)">
+<rect x="9" y="828" width="310" height="91" rx="19" fill="url(#navBlue)" stroke="none" stroke-width="1" />
+</g>
+<g transform="translate(27 841)" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="28" cy="10" r="6"/><path d="M28 16V32M9 48V40Q9 34 17 34H39Q47 34 47 40V48M28 34V48"/><circle cx="9" cy="54" r="6"/><circle cx="28" cy="54" r="6"/><circle cx="47" cy="54" r="6"/></g>
+<text x="87" y="883" font-size="23.2" font-weight="800" font-family="Inter, Arial, sans-serif" fill="white" >Fluxos principais</text>
+<rect x="307" y="840" width="280" height="65" rx="14" fill="url(#whiteCard)" stroke="#9bcaef" stroke-width="1.4" filter="url(#softShadow)"/>
+<use href="#layers" x="329" y="848" width="51" height="51" />
+<text x="385" y="868" font-size="15.7" font-weight="500" font-family="Inter, Arial, sans-serif" fill="#0a1836" >Cadastro e gestão de</text>
+<text x="385" y="887" font-size="15.7" font-weight="500" font-family="Inter, Arial, sans-serif" fill="#0a1836" >clusters / filas / templates.</text>
+<rect x="605" y="840" width="256" height="65" rx="14" fill="url(#whiteCard)" stroke="#9bcaef" stroke-width="1.4" filter="url(#softShadow)"/>
+<use href="#search" x="623" y="847" width="49" height="49" />
+<text x="685" y="868" font-size="15.7" font-weight="500" font-family="Inter, Arial, sans-serif" fill="#0a1836" >Discovery automático</text>
+<text x="685" y="887" font-size="15.7" font-weight="500" font-family="Inter, Arial, sans-serif" fill="#0a1836" >de filas RabbitMQ.</text>
+<rect x="879" y="840" width="266" height="65" rx="14" fill="url(#whiteCard)" stroke="#9bcaef" stroke-width="1.4" filter="url(#softShadow)"/>
+<use href="#cycle" x="896" y="847" width="49" height="49" />
+<text x="959" y="868" font-size="15.7" font-weight="500" font-family="Inter, Arial, sans-serif" fill="#0a1836" >Fila automática de</text>
+<text x="959" y="887" font-size="15.7" font-weight="500" font-family="Inter, Arial, sans-serif" fill="#0a1836" >sincronização Datadog.</text>
+<rect x="1160" y="840" width="250" height="65" rx="14" fill="url(#whiteCard)" stroke="#9bcaef" stroke-width="1.4" filter="url(#softShadow)"/>
+<use href="#calendar" x="1178" y="850" width="47" height="47" />
+<text x="1238" y="868" font-size="15.7" font-weight="500" font-family="Inter, Arial, sans-serif" fill="#0a1836" >Reconciliação diária</text>
+<text x="1238" y="887" font-size="15.7" font-weight="500" font-family="Inter, Arial, sans-serif" fill="#0a1836" >ou sob demanda.</text>
+<rect x="1431" y="840" width="217" height="65" rx="14" fill="url(#whiteCard)" stroke="#9bcaef" stroke-width="1.4" filter="url(#softShadow)"/>
+<use href="#checkShield" x="1448" y="846" width="54" height="54" />
+<text x="1514" y="868" font-size="15.7" font-weight="500" font-family="Inter, Arial, sans-serif" fill="#0a1836" >Auditoria e</text>
+<text x="1514" y="887" font-size="15.7" font-weight="500" font-family="Inter, Arial, sans-serif" fill="#0a1836" >permissões.</text>
+</svg>

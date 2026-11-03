@@ -1,0 +1,288 @@
+services:
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: rabbitmq-monitor-frontend
+    ports:
+      - "3000:5173"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    volumes:
+      - ../frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      api:
+        condition: service_started
+    networks:
+      - rabbitmq-monitor-net
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: rabbitmq-monitor-api
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+    ports:
+      - "8000:8000"
+    environment:
+      APP_NAME: RabbitMQ Monitor Portal
+      APP_ENV: development
+      APP_DEBUG: "true"
+      CREDENTIAL_ENCRYPTION_KEY: ${CREDENTIAL_ENCRYPTION_KEY:-}
+
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: rabbitmq_monitor_portal
+      MYSQL_USER: app
+      MYSQL_PASSWORD: app_password
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+
+      LDAP_HOST: ldap
+      LDAP_PORT: 389
+      LDAP_BIND_DN: cn=admin,dc=example,dc=local
+      LDAP_BIND_PASSWORD: admin
+      LDAP_SEARCH_BASE: ou=People,dc=example,dc=local
+      LDAP_USE_SSL: "false"
+      DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS: ${DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS:-86400}
+      DISCOVERY_SCHEDULER_INTERVAL_SECONDS: ${DISCOVERY_SCHEDULER_INTERVAL_SECONDS:-86400}
+      REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS: ${REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS:-86400}
+      REMOVED_QUEUE_RETENTION_DAYS: ${REMOVED_QUEUE_RETENTION_DAYS:-60}
+      DATADOG_SYNC_INTERVAL_SECONDS: ${DATADOG_SYNC_INTERVAL_SECONDS:-86400}
+
+      RABBITMQ_DEMO_HOST: rabbitmq
+      RABBITMQ_DEMO_PORT: 15672
+      RABBITMQ_DEMO_USERNAME: guest
+      RABBITMQ_DEMO_PASSWORD: guest
+
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173
+      PORTAL_PUBLIC_BASE_URL: ${PORTAL_PUBLIC_BASE_URL:-http://localhost:3000}
+    volumes:
+      - ../backend:/app
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      ldap:
+        condition: service_healthy
+    networks:
+      - rabbitmq-monitor-net
+
+  worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: rabbitmq-monitor-worker
+    command: python -m app.workers.worker
+    environment:
+      APP_NAME: RabbitMQ Monitor Portal Worker
+      APP_ENV: development
+      APP_DEBUG: "true"
+      CREDENTIAL_ENCRYPTION_KEY: ${CREDENTIAL_ENCRYPTION_KEY:-}
+
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: rabbitmq_monitor_portal
+      MYSQL_USER: app
+      MYSQL_PASSWORD: app_password
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+
+      LDAP_HOST: ldap
+      LDAP_PORT: 389
+      LDAP_BIND_DN: cn=admin,dc=example,dc=local
+      LDAP_BIND_PASSWORD: admin
+      LDAP_SEARCH_BASE: ou=People,dc=example,dc=local
+      LDAP_USE_SSL: "false"
+      DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS: ${DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS:-86400}
+      DISCOVERY_SCHEDULER_INTERVAL_SECONDS: ${DISCOVERY_SCHEDULER_INTERVAL_SECONDS:-86400}
+      REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS: ${REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS:-86400}
+      REMOVED_QUEUE_RETENTION_DAYS: ${REMOVED_QUEUE_RETENTION_DAYS:-60}
+      DATADOG_SYNC_INTERVAL_SECONDS: ${DATADOG_SYNC_INTERVAL_SECONDS:-86400}
+      PORTAL_PUBLIC_BASE_URL: ${PORTAL_PUBLIC_BASE_URL:-http://localhost:3000}
+
+      RABBITMQ_DEMO_HOST: rabbitmq
+      RABBITMQ_DEMO_PORT: 15672
+      RABBITMQ_DEMO_USERNAME: guest
+      RABBITMQ_DEMO_PASSWORD: guest
+    volumes:
+      - ../backend:/app
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      ldap:
+        condition: service_healthy
+    networks:
+      - rabbitmq-monitor-net
+
+  scheduler:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: rabbitmq-monitor-scheduler
+    command: python -m app.workers.scheduler
+    environment:
+      APP_NAME: RabbitMQ Monitor Portal Scheduler
+      APP_ENV: development
+      APP_DEBUG: "true"
+      CREDENTIAL_ENCRYPTION_KEY: ${CREDENTIAL_ENCRYPTION_KEY:-}
+
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: rabbitmq_monitor_portal
+      MYSQL_USER: app
+      MYSQL_PASSWORD: app_password
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+
+      LDAP_HOST: ldap
+      LDAP_PORT: 389
+      LDAP_BIND_DN: cn=admin,dc=example,dc=local
+      LDAP_BIND_PASSWORD: admin
+      LDAP_SEARCH_BASE: ou=People,dc=example,dc=local
+      LDAP_USE_SSL: "false"
+      DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS: ${DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS:-86400}
+      DISCOVERY_SCHEDULER_INTERVAL_SECONDS: ${DISCOVERY_SCHEDULER_INTERVAL_SECONDS:-86400}
+      REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS: ${REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS:-86400}
+      REMOVED_QUEUE_RETENTION_DAYS: ${REMOVED_QUEUE_RETENTION_DAYS:-60}
+      DATADOG_SYNC_INTERVAL_SECONDS: ${DATADOG_SYNC_INTERVAL_SECONDS:-86400}
+      PORTAL_PUBLIC_BASE_URL: ${PORTAL_PUBLIC_BASE_URL:-http://localhost:3000}
+    volumes:
+      - ../backend:/app
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ldap:
+        condition: service_healthy
+    networks:
+      - rabbitmq-monitor-net
+
+  mysql:
+    image: mysql:8.4
+    container_name: rabbitmq-monitor-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: rabbitmq_monitor_portal
+      MYSQL_USER: app
+      MYSQL_PASSWORD: app_password
+      MYSQL_ROOT_PASSWORD: root_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -u app -papp_password --silent"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - rabbitmq-monitor-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: rabbitmq-monitor-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - rabbitmq-monitor-net
+
+  ldap:
+    image: osixia/openldap:1.5.0
+    container_name: rabbitmq-monitor-openldap
+    command: --copy-service
+    ports:
+      - "389:389"
+    environment:
+      LDAP_ORGANISATION: RabbitMQ Monitor Portal
+      LDAP_DOMAIN: example.local
+      LDAP_ADMIN_PASSWORD: admin
+      LDAP_CONFIG_PASSWORD: config
+    volumes:
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+      - ./ldap/bootstrap:/container/service/slapd/assets/config/bootstrap/ldif/custom:ro
+    healthcheck:
+      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost -D cn=admin,dc=example,dc=local -w admin -b dc=example,dc=local '(objectClass=*)' >/dev/null 2>&1"]
+      interval: 300s
+      timeout: 5s
+      retries: 3
+    networks:
+      - rabbitmq-monitor-net
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-monitor-demo-rabbitmq
+    hostname: rabbitmq-demo
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_VHOST: /
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+    networks:
+      - rabbitmq-monitor-net
+
+  rabbitmq-init:
+    image: curlimages/curl:latest
+    container_name: rabbitmq-monitor-rabbitmq-init
+    volumes:
+      - ./rabbitmq/init-queues.sh:/init-queues.sh:ro
+    command: sh /init-queues.sh
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - rabbitmq-monitor-net
+    restart: "no"
+
+volumes:
+  mysql_data:
+  redis_data:
+  rabbitmq_data:
+  ldap_data:
+  ldap_config:
+  frontend_node_modules:
+
+networks:
+  rabbitmq-monitor-net:
+    driver: bridge
