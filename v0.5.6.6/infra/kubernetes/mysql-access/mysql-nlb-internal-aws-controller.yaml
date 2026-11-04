@@ -1,0 +1,24 @@
+# Opcional: acesso TCP direto ao MySQL existente por NLB INTERNO (AWS Load Balancer Controller).
+# Aplicar no namespace: kubectl -n <namespace> apply -f mysql-nlb-internal-aws-controller.yaml
+# Requer AWS Load Balancer Controller operante e subnets/SG/roteamento adequados.
+# Não altera o Service rabbitmq-monitor-mysql nem StatefulSet/PVC.
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-monitor-mysql-nlb
+  labels:
+    app.kubernetes.io/part-of: rabbitmq-monitor-portal
+    app.kubernetes.io/component: mysql-access
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "external"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
+spec:
+  type: LoadBalancer
+  selector:
+    app: rabbitmq-monitor-mysql
+  ports:
+    - name: mysql
+      protocol: TCP
+      port: 3306
+      targetPort: 3306
