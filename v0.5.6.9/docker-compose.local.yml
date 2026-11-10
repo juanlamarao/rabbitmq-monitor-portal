@@ -1,0 +1,201 @@
+name: monitor-portal-local
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    env_file: .env.local
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-rabbitmq_monitor_portal}
+      MYSQL_USER: ${MYSQL_USER:-app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Defina MYSQL_PASSWORD no .env.local}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Defina MYSQL_ROOT_PASSWORD no .env.local}
+    ports: ["127.0.0.1:3307:3306"]
+    volumes:
+      - mysql_local:/var/lib/mysql
+      - ./infra/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" mysqladmin ping -h 127.0.0.1 -u root --silent']
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
+    ports: ["127.0.0.1:6380:6379"]
+    volumes: ["redis_local:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  ldap:
+    image: osixia/openldap:1.5.0
+    command: --copy-service
+    restart: unless-stopped
+    environment:
+      LDAP_ORGANISATION: Monitor Portal Local
+      LDAP_DOMAIN: example.local
+      LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD:-admin_local_dev}
+      LDAP_CONFIG_PASSWORD: ${LDAP_CONFIG_PASSWORD:-config_local_dev}
+      LDAP_TLS: "true"
+      LDAP_TLS_VERIFY_CLIENT: "never"
+    ports: ["127.0.0.1:1389:389", "127.0.0.1:1636:636"]
+    volumes:
+      - ldap_local:/var/lib/ldap
+      - ldap_config_local:/etc/ldap/slapd.d
+      - ./infra/ldap/bootstrap:/container/service/slapd/assets/config/bootstrap/ldif/custom:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'ldapsearch -x -H ldap://127.0.0.1:389 -D cn=admin,dc=example,dc=local -w "$$LDAP_ADMIN_PASSWORD" -b dc=example,dc=local "(objectClass=*)" >/dev/null 2>&1']
+      interval: 20s
+      timeout: 8s
+      retries: 30
+
+  rabbitmq:
+    image: rabbitmq:4.1-management
+    hostname: local-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-portal}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Defina RABBITMQ_PASSWORD no .env.local}
+      RABBITMQ_DEFAULT_VHOST: /
+    volumes:
+      - rabbitmq_local:/var/lib/rabbitmq
+      - ./infra/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+      - "127.0.0.1:15692:15692"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 8s
+      retries: 30
+
+  rabbitmq-init:
+    image: curlimages/curl:8.12.1
+    environment:
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-portal}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Defina RABBITMQ_PASSWORD no .env.local}
+    volumes: ["./infra/rabbitmq/init-queues.sh:/init-queues.sh:ro"]
+    command: ["sh", "/init-queues.sh"]
+    depends_on:
+      rabbitmq: {condition: service_healthy}
+    restart: "no"
+
+  rabbitmq-monitor-api:
+    build: {context: ., dockerfile: Dockerfile_Backend}
+    # Nome lógico igual ao Service/Deployment no EKS.
+    restart: unless-stopped
+    env_file: .env.local
+    environment: &api_env
+      APP_ENV: development
+      APP_DEBUG: "true"
+      AUTO_DB_BOOTSTRAP: "true"
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      LDAP_HOST: ldap
+      LDAP_PORT: "636"
+      LDAP_BIND_DN: cn=admin,dc=example,dc=local
+      LDAP_BIND_PASSWORD: ${LDAP_ADMIN_PASSWORD:-admin_local_dev}
+      LDAP_SEARCH_BASE: ou=People,dc=example,dc=local
+      LDAP_SEARCH_FILTER: (objectClass=inetOrgPerson)
+      LDAP_DEMO_MODE: "true"
+      LDAP_REQUIRE_ORG_UNIT: "false"
+      LDAP_USE_SSL: "true"
+      LDAP_START_TLS: "false"
+      LDAP_TLS_VERIFY: "false"
+      SESSION_COOKIE_SECURE: "false"
+      AUTH_ENABLED: "true"
+      LOCAL_ADMIN_ENABLED: "true"
+      PORTAL_PUBLIC_BASE_URL: http://localhost:3000
+      CORS_ORIGINS: http://localhost:3000
+      RABBITMQ_DEMO_HOST: rabbitmq
+      RABBITMQ_DEMO_PORT: "15672"
+      RABBITMQ_DEMO_USERNAME: ${RABBITMQ_USERNAME:-portal}
+      RABBITMQ_DEMO_PASSWORD: ${RABBITMQ_PASSWORD:?Defina RABBITMQ_PASSWORD no .env.local}
+      DISCOVERY_SCHEDULER_INTERVAL_SECONDS: "86400"
+      DATADOG_SYNC_INTERVAL_SECONDS: "86400"
+      DATADOG_SYNC_POLL_SECONDS: "3"
+      DATADOG_SYNC_MAX_ATTEMPTS: "8"
+      DATADOG_RECONCILE_INTERVAL_SECONDS: "86400"
+      WEBHOOK_RECONCILE_INTERVAL_SECONDS: "86400"
+      DATADOG_RECONCILE_POLL_SECONDS: "10"
+      DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS: "86400"
+    depends_on:
+      mysql: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      ldap: {condition: service_healthy}
+      rabbitmq: {condition: service_healthy}
+    ports: ["127.0.0.1:8000:8000"]
+
+  rabbitmq-monitor-worker:
+    build: {context: ., dockerfile: Dockerfile_Backend}
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.worker"]
+    env_file: .env.local
+    environment: *api_env
+    depends_on:
+      rabbitmq-monitor-api: {condition: service_started}
+
+  rabbitmq-monitor-sync-dispatcher:
+    build: {context: ., dockerfile: Dockerfile_Backend}
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.datadog_dispatcher"]
+    env_file: .env.local
+    environment: *api_env
+    depends_on:
+      rabbitmq-monitor-api: {condition: service_started}
+
+  rabbitmq-monitor-reconciler:
+    build: {context: ., dockerfile: Dockerfile_Backend}
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.datadog_reconciler"]
+    env_file: .env.local
+    environment: *api_env
+    depends_on:
+      rabbitmq-monitor-api: {condition: service_started}
+
+  rabbitmq-monitor-scheduler:
+    build: {context: ., dockerfile: Dockerfile_Backend}
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.scheduler"]
+    env_file: .env.local
+    environment: *api_env
+    depends_on:
+      rabbitmq-monitor-api: {condition: service_started}
+
+  rabbitmq-monitor-frontend:
+    build: {context: ., dockerfile: Dockerfile_frontend}
+    restart: unless-stopped
+    ports: ["127.0.0.1:3000:80"]
+    depends_on:
+      rabbitmq-monitor-api: {condition: service_started}
+
+  # Opcional: iniciar com `--profile datadog` somente após preencher DD_API_KEY.
+  datadog-agent:
+    image: datadog/agent:7
+    profiles: ["datadog"]
+    restart: unless-stopped
+    environment:
+      DD_API_KEY: ${DD_API_KEY:-}
+      DD_SITE: ${DD_SITE:-datadoghq.com}
+      DD_HOSTNAME: monitor-portal-rabbitmq-local
+      DD_PROCESS_AGENT_ENABLED: "false"
+      DD_LOGS_ENABLED: "false"
+      DD_APM_ENABLED: "false"
+    volumes:
+      - ./infra/datadog/conf.d/rabbitmq.d/conf.yaml:/etc/datadog-agent/conf.d/rabbitmq.d/conf.yaml:ro
+    depends_on:
+      rabbitmq: {condition: service_healthy}
+
+volumes:
+  mysql_local:
+  redis_local:
+  ldap_local:
+  ldap_config_local:
+  rabbitmq_local:

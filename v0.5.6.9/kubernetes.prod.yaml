@@ -1,0 +1,1761 @@
+# Kubernetes EKS Dev. Variables injected from Azure DevOps Library; no ConfigMap, Secret or Ingress TLS resource.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: __RBTMQ_PORTAL_NAMESPACE__
+  labels:
+    app.kubernetes.io/part-of: rabbitmq-monitor-portal
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-monitor-mysql
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  type: ClusterIP
+  selector:
+    app: rabbitmq-monitor-mysql
+  ports:
+  - name: mysql
+    port: 3306
+    targetPort: 3306
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq-monitor-mysql
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  serviceName: rabbitmq-monitor-mysql
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq-monitor-mysql
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-monitor-mysql
+    spec:
+      containers:
+      - name: mysql
+        image: __RBTMQ_PORTAL_MYSQL_IMAGE__
+        ports:
+        - containerPort: 3306
+          name: mysql
+        env:
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        - name: MYSQL_ROOT_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_ROOT_PASSWORD__"
+        startupProbe:
+          tcpSocket:
+            port: mysql
+          periodSeconds: 10
+          failureThreshold: 45
+        readinessProbe:
+          tcpSocket:
+            port: mysql
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: '2'
+            memory: 2Gi
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+        - name: mysql-schema
+          mountPath: /docker-entrypoint-initdb.d
+          readOnly: true
+      volumes:
+      - name: mysql-schema
+        emptyDir: {}
+      initContainers:
+      - name: prepare-schema
+        image: __RBTMQ_PORTAL_MYSQL_IMAGE__
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -ec
+        - |
+          cat > '/schema/001_schema.sql' <<'BOOTSTRAP_EOF'
+          CREATE DATABASE IF NOT EXISTS rabbitmq_monitor_portal
+            CHARACTER SET utf8mb4
+            COLLATE utf8mb4_unicode_ci;
+          
+          USE rabbitmq_monitor_portal;
+          
+          CREATE TABLE IF NOT EXISTS sre_groups (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            name VARCHAR(120) NOT NULL,
+            description TEXT NULL,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_sre_groups_name (name)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          
+          
+          CREATE TABLE IF NOT EXISTS sre_group_members (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            sre_group_id BIGINT UNSIGNED NOT NULL,
+            email VARCHAR(255) NOT NULL,
+            position INT NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_sre_group_member_email (sre_group_id, email),
+            KEY ix_sre_group_members_sre_group_id (sre_group_id),
+            CONSTRAINT fk_sre_group_members_group FOREIGN KEY (sre_group_id) REFERENCES sre_groups(id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          
+          CREATE TABLE IF NOT EXISTS datadog_orgs (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            name VARCHAR(120) NOT NULL,
+            api_url VARCHAR(255) NOT NULL DEFAULT 'https://api.datadoghq.com',
+            org_url VARCHAR(255) NULL,
+            api_key_encrypted TEXT NULL,
+            app_key_encrypted TEXT NULL,
+            description TEXT NULL,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_datadog_orgs_name (name)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          
+          CREATE TABLE IF NOT EXISTS rabbitmq_clusters (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            name VARCHAR(160) NOT NULL,
+            environment VARCHAR(20) NOT NULL,
+            business_line TEXT NULL,
+            connection_type VARCHAR(32) NOT NULL DEFAULT 'management_api',
+            metrics_endpoints TEXT NULL,
+            protocol VARCHAR(10) NOT NULL DEFAULT 'https',
+            dns VARCHAR(255) NOT NULL,
+            api_port INT NOT NULL DEFAULT 15672,
+            api_username VARCHAR(180) NOT NULL,
+            api_password_encrypted TEXT NOT NULL,
+            sre_group_id BIGINT UNSIGNED NULL,
+            datadog_org_id BIGINT UNSIGNED NULL,
+            datadog_integration_type VARCHAR(80) NOT NULL DEFAULT 'custom',
+            datadog_cluster_tag_value VARCHAR(255) NULL,
+            datadog_cluster_tag_key VARCHAR(120) NOT NULL DEFAULT 'rabbitmq_cluster',
+            datadog_vhost_tag_key VARCHAR(120) NOT NULL DEFAULT 'vhost',
+            datadog_queue_tag_key VARCHAR(120) NOT NULL DEFAULT 'queue',
+            datadog_node_tag_key VARCHAR(120) NULL,
+            datadog_metric_messages VARCHAR(255) NOT NULL DEFAULT 'rabbitmq.queue.messages',
+            datadog_metric_consumers VARCHAR(255) NOT NULL DEFAULT 'rabbitmq.queue.consumers',
+            monitor_cluster BOOLEAN NOT NULL DEFAULT TRUE,
+            monitor_queues BOOLEAN NOT NULL DEFAULT TRUE,
+            monitor_exchanges BOOLEAN NOT NULL DEFAULT FALSE,
+            monitor_connections BOOLEAN NOT NULL DEFAULT FALSE,
+            monitor_nodes BOOLEAN NOT NULL DEFAULT FALSE,
+            monitor_shovels BOOLEAN NOT NULL DEFAULT FALSE,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            last_discovery_at DATETIME NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_rabbitmq_clusters_name (name),
+            KEY ix_clusters_sre_group_id (sre_group_id),
+            KEY ix_clusters_datadog_org_id (datadog_org_id),
+            CONSTRAINT fk_clusters_sre_group FOREIGN KEY (sre_group_id) REFERENCES sre_groups(id) ON DELETE SET NULL,
+            CONSTRAINT fk_clusters_datadog_org FOREIGN KEY (datadog_org_id) REFERENCES datadog_orgs(id) ON DELETE SET NULL
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          
+          CREATE TABLE IF NOT EXISTS cluster_temporary_queue_regexes (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            cluster_id BIGINT UNSIGNED NOT NULL,
+            pattern VARCHAR(500) NOT NULL DEFAULT '^$',
+            position INT NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_cluster_temp_regex_position (cluster_id, position),
+            KEY ix_cluster_temp_regex_cluster_id (cluster_id),
+            CONSTRAINT fk_temp_regex_cluster FOREIGN KEY (cluster_id) REFERENCES rabbitmq_clusters(id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          
+          CREATE TABLE IF NOT EXISTS rabbitmq_queues (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            cluster_id BIGINT UNSIGNED NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            vhost VARCHAR(255) NOT NULL,
+            type VARCHAR(80) NULL,
+            durable BOOLEAN NULL,
+            auto_delete BOOLEAN NULL,
+            exclusive BOOLEAN NULL,
+            state VARCHAR(80) NULL,
+            api_raw JSON NULL,
+            description TEXT NULL,
+            criticality VARCHAR(40) NULL,
+            owner_email VARCHAR(255) NULL,
+            journey VARCHAR(255) NULL,
+            service_name VARCHAR(255) NULL,
+            monitoring_schedule VARCHAR(40) NOT NULL DEFAULT '24x7',
+            monitoring_custom_window VARCHAR(255) NULL,
+            dev_emails JSON NULL,
+            is_dead_letter BOOLEAN NOT NULL DEFAULT FALSE,
+            monitor_anomaly BOOLEAN NOT NULL DEFAULT TRUE,
+            monitor_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+            is_temporary BOOLEAN NOT NULL DEFAULT FALSE,
+            is_removed BOOLEAN NOT NULL DEFAULT FALSE,
+            removed_at DATETIME NULL,
+            discovered_at DATETIME NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_queue_cluster_vhost_name (cluster_id, vhost, name),
+            KEY ix_queues_cluster_removed (cluster_id, is_removed),
+            KEY ix_queues_cluster_removed_vhost_name (cluster_id, is_removed, vhost, name),
+            KEY ix_queues_name (name),
+            KEY ix_queues_vhost (vhost),
+            CONSTRAINT fk_queues_cluster FOREIGN KEY (cluster_id) REFERENCES rabbitmq_clusters(id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          
+          CREATE TABLE IF NOT EXISTS monitor_templates (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            code VARCHAR(120) NOT NULL,
+            name VARCHAR(180) NOT NULL,
+            description TEXT NULL,
+            component_type VARCHAR(40) NOT NULL DEFAULT 'queue',
+            monitor_kind VARCHAR(80) NOT NULL,
+            default_config JSON NOT NULL,
+            datadog_monitor_type VARCHAR(80) NULL DEFAULT 'query alert',
+            datadog_query_template TEXT NULL,
+            datadog_message_template TEXT NULL,
+            datadog_tags_template JSON NULL,
+            datadog_options JSON NULL,
+            is_system BOOLEAN NOT NULL DEFAULT TRUE,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_monitor_templates_code (code),
+            KEY ix_monitor_templates_component_active (component_type, is_active)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          
+          CREATE TABLE IF NOT EXISTS queue_monitor_templates (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            queue_id BIGINT UNSIGNED NOT NULL,
+            template_id BIGINT UNSIGNED NOT NULL,
+            enabled BOOLEAN NOT NULL DEFAULT TRUE,
+            overrides JSON NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_queue_template (queue_id, template_id),
+            KEY ix_queue_monitor_templates_enabled (enabled),
+            KEY ix_queue_monitor_templates_template_id (template_id),
+            CONSTRAINT fk_queue_templates_queue FOREIGN KEY (queue_id) REFERENCES rabbitmq_queues(id) ON DELETE CASCADE,
+            CONSTRAINT fk_queue_templates_template FOREIGN KEY (template_id) REFERENCES monitor_templates(id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          
+          CREATE TABLE IF NOT EXISTS generated_monitors (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            queue_id BIGINT UNSIGNED NULL,
+            template_id BIGINT UNSIGNED NULL,
+            provider VARCHAR(40) NOT NULL DEFAULT 'datadog',
+            external_id VARCHAR(255) NULL,
+            external_url VARCHAR(500) NULL,
+            desired_config JSON NULL,
+            last_applied_config JSON NULL,
+            status VARCHAR(40) NOT NULL DEFAULT 'planned',
+            error_message TEXT NULL,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            datadog_org_id BIGINT UNSIGNED NULL,
+            cluster_id BIGINT UNSIGNED NULL,
+            monitor_scope_type VARCHAR(40) NOT NULL DEFAULT 'dedicated_queue_template',
+            grouping_key VARCHAR(120) NULL,
+            name VARCHAR(500) NULL,
+            query TEXT NULL,
+            message TEXT NULL,
+            tags_json JSON NULL,
+            options_json JSON NULL,
+            covered_queues_count INT NOT NULL DEFAULT 0,
+            sample_queues_json JSON NULL,
+            desired_config_hash VARCHAR(80) NULL,
+            applied_config_hash VARCHAR(80) NULL,
+            sync_status VARCHAR(40) NOT NULL DEFAULT 'planned',
+            external_monitor_id VARCHAR(255) NULL,
+            external_monitor_url VARCHAR(500) NULL,
+            last_planned_at DATETIME NULL,
+            last_synced_at DATETIME NULL,
+            last_error TEXT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY ix_generated_monitors_queue_id (queue_id),
+            KEY ix_generated_monitors_template_id (template_id),
+            KEY ix_generated_monitors_provider_status (provider, status),
+            KEY ix_generated_monitors_provider_grouping (provider, grouping_key),
+            KEY ix_generated_monitors_org_status (datadog_org_id, sync_status),
+            KEY ix_generated_monitors_template_status (template_id, sync_status),
+            KEY ix_generated_monitors_cluster_id (cluster_id),
+            CONSTRAINT fk_generated_monitors_queue FOREIGN KEY (queue_id) REFERENCES rabbitmq_queues(id) ON DELETE SET NULL,
+            CONSTRAINT fk_generated_monitors_template FOREIGN KEY (template_id) REFERENCES monitor_templates(id) ON DELETE SET NULL,
+            CONSTRAINT fk_generated_monitors_datadog_org FOREIGN KEY (datadog_org_id) REFERENCES datadog_orgs(id) ON DELETE SET NULL,
+            CONSTRAINT fk_generated_monitors_cluster FOREIGN KEY (cluster_id) REFERENCES rabbitmq_clusters(id) ON DELETE SET NULL
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          
+          CREATE TABLE IF NOT EXISTS job_history (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            job_type VARCHAR(80) NOT NULL,
+            status VARCHAR(40) NOT NULL DEFAULT 'pending',
+            cluster_id BIGINT UNSIGNED NULL,
+            summary TEXT NULL,
+            details JSON NULL,
+            started_at DATETIME NULL,
+            finished_at DATETIME NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY ix_job_history_cluster_id (cluster_id),
+            KEY ix_job_history_status_created (status, created_at),
+            CONSTRAINT fk_job_history_cluster FOREIGN KEY (cluster_id) REFERENCES rabbitmq_clusters(id) ON DELETE SET NULL
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          
+          CREATE TABLE IF NOT EXISTS audit_logs (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            entity_type VARCHAR(80) NOT NULL,
+            entity_id VARCHAR(80) NULL,
+            action VARCHAR(80) NOT NULL,
+            actor VARCHAR(120) NOT NULL DEFAULT 'local-admin',
+            summary TEXT NULL,
+            before_data JSON NULL,
+            after_data JSON NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY ix_audit_logs_entity (entity_type, entity_id),
+            KEY ix_audit_logs_created_at (created_at)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          
+          INSERT INTO sre_groups (name, description, is_active)
+          VALUES ('SRE Default', 'Grupo SRE inicial para ambiente local.', TRUE)
+          ON DUPLICATE KEY UPDATE description = VALUES(description), is_active = VALUES(is_active);
+          
+          INSERT INTO datadog_orgs (name, api_url, org_url, description, is_active)
+          VALUES ('Datadog Default', 'https://api.datadoghq.com', NULL, 'Org Datadog inicial para vincular clusters.', TRUE)
+          ON DUPLICATE KEY UPDATE api_url = VALUES(api_url), org_url = VALUES(org_url), description = VALUES(description), is_active = VALUES(is_active);
+          
+          INSERT INTO monitor_templates (code, name, description, component_type, monitor_kind, default_config, datadog_monitor_type, datadog_query_template, datadog_message_template, datadog_tags_template, datadog_options, is_system, is_active)
+          VALUES
+          (
+            'queue_messages_above_threshold',
+            'Fila com quantidade de mensagens acima de threshold',
+            'Alerta quando a quantidade de mensagens na fila ultrapassar o threshold configurado.',
+            'queue',
+            'threshold',
+            JSON_OBJECT('threshold', 5000, 'window', '15m', 'business_days_only', false),
+            'query alert',
+            'max(last_{{window}}):max:{{metric_messages}}{ {{datadog_scope}} } > {{threshold}}',
+            '{{#is_alert}}\n🚨 RabbitMQ Queue em alerta\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n\nDetalhes da fila: {{public_reference_url}}\n{{/is_alert}}\n\n{{#is_recovery}}\n✅ RabbitMQ Queue recuperada\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n{{/is_recovery}}',
+            JSON_ARRAY('managed_by:rabbitmq-monitor-portal', 'component:queue', 'provider:datadog', 'template:{{template_code}}'),
+            JSON_OBJECT('include_tags', true, 'notify_no_data', false, 'require_full_window', false),
+            TRUE,
+            TRUE
+          ),
+          (
+            'queue_dlq_messages_above_threshold',
+            'Fila DLQ com mensagens acima de threshold',
+            'Alerta para filas DLQ quando houver mensagens acima do limite configurado.',
+            'queue',
+            'dlq_threshold',
+            JSON_OBJECT('threshold', 0, 'window', '15m', 'business_days_only', false),
+            'query alert',
+            'max(last_{{window}}):max:{{metric_messages}}{ {{datadog_scope}} } > {{threshold}}',
+            '{{#is_alert}}\n🚨 RabbitMQ Queue em alerta\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n\nDetalhes da fila: {{public_reference_url}}\n{{/is_alert}}\n\n{{#is_recovery}}\n✅ RabbitMQ Queue recuperada\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n{{/is_recovery}}',
+            JSON_ARRAY('managed_by:rabbitmq-monitor-portal', 'component:queue', 'provider:datadog', 'template:{{template_code}}'),
+            JSON_OBJECT('include_tags', true, 'notify_no_data', false, 'require_full_window', false),
+            TRUE,
+            TRUE
+          ),
+          (
+            'queue_messages_low_consumers',
+            'Fila com mensagens e baixo consumidores',
+            'Alerta quando houver mensagens e consumidores abaixo do mínimo configurado.',
+            'queue',
+            'messages_low_consumers',
+            JSON_OBJECT('messages_threshold', 1, 'consumers_threshold', 0, 'window', '15m', 'business_days_only', false),
+            'query alert',
+            NULL,
+            '{{#is_alert}}\n🚨 RabbitMQ Queue em alerta\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n\nDetalhes da fila: {{public_reference_url}}\n{{/is_alert}}\n\n{{#is_recovery}}\n✅ RabbitMQ Queue recuperada\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n{{/is_recovery}}',
+            JSON_ARRAY('managed_by:rabbitmq-monitor-portal', 'component:queue', 'provider:datadog', 'template:{{template_code}}'),
+            JSON_OBJECT('include_tags', true, 'notify_no_data', false, 'require_full_window', false),
+            TRUE,
+            TRUE
+          ),
+          (
+            'queue_growing_messages',
+            'Fila com mensagens crescentes',
+            'Alerta quando a quantidade de mensagens crescer durante a janela configurada.',
+            'queue',
+            'growing_messages',
+            JSON_OBJECT('window', '15m', 'business_days_only', false),
+            'query alert',
+            'change(avg(last_{{window}}),last_{{window}}):max:{{metric_messages}}{ {{datadog_scope}} } > 0',
+            '{{#is_alert}}\n🚨 RabbitMQ Queue em alerta\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n\nDetalhes da fila: {{public_reference_url}}\n{{/is_alert}}\n\n{{#is_recovery}}\n✅ RabbitMQ Queue recuperada\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n{{/is_recovery}}',
+            JSON_ARRAY('managed_by:rabbitmq-monitor-portal', 'component:queue', 'provider:datadog', 'template:{{template_code}}'),
+            JSON_OBJECT('include_tags', true, 'notify_no_data', false, 'require_full_window', false),
+            TRUE,
+            TRUE
+          ),
+          (
+            'queue_without_messages',
+            'Fila sem mensagens',
+            'Alerta quando a fila permanecer sem mensagens durante a janela configurada.',
+            'queue',
+            'without_messages',
+            JSON_OBJECT('window', '15m', 'business_days_only', false),
+            'query alert',
+            'max(last_{{window}}):max:{{metric_messages}}{ {{datadog_scope}} } < 1',
+            '{{#is_alert}}\n🚨 RabbitMQ Queue em alerta\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n\nDetalhes da fila: {{public_reference_url}}\n{{/is_alert}}\n\n{{#is_recovery}}\n✅ RabbitMQ Queue recuperada\n\nCluster: {{rabbitmq_cluster.name}}\nVhost: {{vhost.name}}\nQueue: {{queue.name}}\n{{/is_recovery}}',
+            JSON_ARRAY('managed_by:rabbitmq-monitor-portal', 'component:queue', 'provider:datadog', 'template:{{template_code}}'),
+            JSON_OBJECT('include_tags', true, 'notify_no_data', false, 'require_full_window', false),
+            TRUE,
+            TRUE
+          )
+          ON DUPLICATE KEY UPDATE
+            name = VALUES(name),
+            description = VALUES(description),
+            component_type = VALUES(component_type),
+            monitor_kind = VALUES(monitor_kind),
+            default_config = VALUES(default_config),
+            datadog_monitor_type = COALESCE(datadog_monitor_type, VALUES(datadog_monitor_type)),
+            datadog_query_template = COALESCE(datadog_query_template, VALUES(datadog_query_template)),
+            datadog_message_template = COALESCE(datadog_message_template, VALUES(datadog_message_template)),
+            datadog_tags_template = COALESCE(datadog_tags_template, VALUES(datadog_tags_template)),
+            datadog_options = COALESCE(datadog_options, VALUES(datadog_options)),
+            is_system = VALUES(is_system),
+            is_active = VALUES(is_active);
+          -- Apply manually to existing MySQL database. DO NOT DROP existing tables / PVC.
+          USE rabbitmq_monitor_portal;
+          
+          CREATE TABLE IF NOT EXISTS portal_users (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            tenant_id VARCHAR(64) NOT NULL,
+            object_id VARCHAR(64) NOT NULL,
+            display_name VARCHAR(255) NOT NULL,
+            email VARCHAR(255) NOT NULL,
+            last_login_at DATETIME NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_portal_users_entra_identity (tenant_id,object_id)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+          
+          CREATE TABLE IF NOT EXISTS entra_access_groups (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            object_id VARCHAR(64) NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            description TEXT NULL,
+            is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            UNIQUE KEY uq_entra_access_groups_object_id (object_id)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+          
+          CREATE TABLE IF NOT EXISTS entra_group_clusters (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            group_id BIGINT UNSIGNED NOT NULL,
+            cluster_id BIGINT UNSIGNED NOT NULL,
+            UNIQUE KEY uq_entra_group_cluster (group_id,cluster_id),
+            CONSTRAINT fk_access_group FOREIGN KEY (group_id) REFERENCES entra_access_groups(id) ON DELETE CASCADE,
+            CONSTRAINT fk_access_cluster FOREIGN KEY (cluster_id) REFERENCES rabbitmq_clusters(id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+          USE rabbitmq_monitor_portal;
+          CREATE TABLE IF NOT EXISTS portal_ui_settings (
+              id INT NOT NULL PRIMARY KEY,
+              layout VARCHAR(24) NOT NULL DEFAULT 'corporate',
+              theme VARCHAR(24) NOT NULL DEFAULT 'btg_light',
+              login_particles BOOLEAN NOT NULL DEFAULT TRUE,
+              updated_by VARCHAR(120) NULL,
+              updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+          INSERT IGNORE INTO portal_ui_settings (id, layout, theme, login_particles)
+          VALUES (1, 'corporate', 'btg_light', TRUE);
+
+          CREATE TABLE IF NOT EXISTS datadog_sync_queue (
+            queue_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+            desired_revision INT NOT NULL DEFAULT 1,
+            applied_revision INT NOT NULL DEFAULT 0,
+            status VARCHAR(24) NOT NULL DEFAULT 'pending',
+            attempts INT NOT NULL DEFAULT 0,
+            reason VARCHAR(150) NOT NULL DEFAULT 'change',
+            requested_by VARCHAR(255) NOT NULL DEFAULT 'system',
+            last_error TEXT NULL,
+            next_retry_at DATETIME NULL,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            last_synced_at DATETIME NULL,
+            INDEX ix_dd_sync_state_retry (status, next_retry_at),
+            CONSTRAINT fk_dd_sync_queue_id FOREIGN KEY (queue_id) REFERENCES rabbitmq_queues(id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+          
+          CREATE TABLE IF NOT EXISTS datadog_reconcile_runs (
+            id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            status VARCHAR(24) NOT NULL DEFAULT 'queued',
+            `trigger` VARCHAR(24) NOT NULL,
+            requested_by VARCHAR(255) NOT NULL,
+            stage VARCHAR(120) NOT NULL DEFAULT 'Aguardando worker',
+            current_action TEXT NULL,
+            total_orgs INT NOT NULL DEFAULT 0,
+            processed_orgs INT NOT NULL DEFAULT 0,
+            total_clusters INT NOT NULL DEFAULT 0,
+            processed_clusters INT NOT NULL DEFAULT 0,
+            total_queues INT NOT NULL DEFAULT 0,
+            processed_queues INT NOT NULL DEFAULT 0,
+            created INT NOT NULL DEFAULT 0,
+            updated INT NOT NULL DEFAULT 0,
+            recovered INT NOT NULL DEFAULT 0,
+            errors INT NOT NULL DEFAULT 0,
+            untracked_remote INT NOT NULL DEFAULT 0,
+            error_summary TEXT NULL,
+            started_at DATETIME NULL,
+            finished_at DATETIME NULL,
+            heartbeat_at DATETIME NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX ix_reconcile_run_created (created_at)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+          CREATE TABLE IF NOT EXISTS datadog_reconcile_clusters (
+            run_id BIGINT NOT NULL,
+            cluster_id BIGINT NOT NULL,
+            cluster_name VARCHAR(255) NOT NULL,
+            org_name VARCHAR(120) NOT NULL,
+            status VARCHAR(24) NOT NULL DEFAULT 'pending',
+            total_queues INT NOT NULL DEFAULT 0,
+            processed_queues INT NOT NULL DEFAULT 0,
+            current_queue VARCHAR(255) NULL,
+            current_action VARCHAR(255) NULL,
+            created INT NOT NULL DEFAULT 0,
+            updated INT NOT NULL DEFAULT 0,
+            errors INT NOT NULL DEFAULT 0,
+            PRIMARY KEY (run_id, cluster_id),
+            CONSTRAINT fk_reconcile_clusters_run FOREIGN KEY (run_id) REFERENCES datadog_reconcile_runs(id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+          CREATE TABLE IF NOT EXISTS datadog_reconcile_control (
+            id INT NOT NULL PRIMARY KEY,
+            active_run_id BIGINT NULL
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+          INSERT INTO datadog_reconcile_control(id,active_run_id) VALUES (1,NULL)
+            ON DUPLICATE KEY UPDATE id=VALUES(id);
+          
+          BOOTSTRAP_EOF
+          
+
+        volumeMounts:
+        - name: mysql-schema
+          mountPath: /schema
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-monitor-redis
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  type: ClusterIP
+  selector:
+    app: rabbitmq-monitor-redis
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq-monitor-redis
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  serviceName: rabbitmq-monitor-redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq-monitor-redis
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-monitor-redis
+    spec:
+      containers:
+      - name: redis
+        image: __RBTMQ_PORTAL_REDIS_IMAGE__
+        command:
+        - redis-server
+        - --appendonly
+        - 'yes'
+        ports:
+        - containerPort: 6379
+          name: redis
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: '1'
+            memory: 512Mi
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-monitor-api
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: rabbitmq-monitor-api
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-monitor-api
+    spec:
+      initContainers:
+      - name: wait-mysql-schema
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - app.core.wait_for_db
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: http://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: http://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        resources:
+          requests:
+            cpu: 25m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+      containers:
+      - name: api
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - uvicorn
+        - app.main:app
+        - --host
+        - 0.0.0.0
+        - --port
+        - '8000'
+        - --proxy-headers
+        ports:
+        - name: http
+          containerPort: 8000
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        - name: CREDENTIAL_ENCRYPTION_KEY
+          value: "__RBTMQ_PORTAL_CREDENTIAL_ENCRYPTION_KEY__"
+        - name: LDAP_HOST
+          value: "__RBTMQ_PORTAL_LDAP_HOST__"
+        - name: LDAP_PORT
+          value: "__RBTMQ_PORTAL_LDAP_PORT__"
+        - name: LDAP_BIND_DN
+          value: "__RBTMQ_PORTAL_LDAP_BIND_DN__"
+        - name: LDAP_BIND_PASSWORD
+          value: "__RBTMQ_PORTAL_LDAP_BIND_PASSWORD__"
+        - name: LDAP_SEARCH_BASE
+          value: "__RBTMQ_PORTAL_LDAP_SEARCH_BASE__"
+        - name: LDAP_SEARCH_FILTER
+          value: (&(objectClass=user)(objectCategory=person))
+        - name: LDAP_USE_SSL
+          value: "__RBTMQ_PORTAL_LDAP_USE_SSL__"
+        - name: LDAP_START_TLS
+          value: "__RBTMQ_PORTAL_LDAP_START_TLS__"
+        - name: LDAP_TLS_VERIFY
+          value: "__RBTMQ_PORTAL_LDAP_TLS_VERIFY__"
+        - name: LDAP_REQUIRE_ORG_UNIT
+          value: "__RBTMQ_PORTAL_LDAP_REQUIRE_ORG_UNIT__"
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: ENTRA_TENANT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_TENANT_ID__"
+        - name: ENTRA_CLIENT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_ID__"
+        - name: ENTRA_CLIENT_SECRET
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_SECRET__"
+        - name: ENTRA_REDIRECT_URI
+          value: "__RBTMQ_PORTAL_ENTRA_REDIRECT_URI__"
+        - name: ENTRA_GROUPS_SOURCE
+          value: "graph"
+        - name: ENTRA_GRAPH_SCOPES
+          value: "User.Read"
+        - name: ENTRA_GROUPS_CACHE_TTL
+          value: "300"
+        - name: ENTRA_ADMIN_APP_ROLE
+          value: Portal.Admin
+        - name: ENTRA_ADMIN_GROUP_ID
+          value: ''
+        - name: ENTRA_OBSERVABILITY_GROUP_ID
+          value: ""
+        - name: ENTRA_OBSERVABILITY_APP_ROLE
+          value: "Portal.Observability"
+        - name: LOCAL_ADMIN_ENABLED
+          value: 'true'
+        - name: LOCAL_ADMIN_PASSWORD_HASH
+          value: "__RBTMQ_PORTAL_LOCAL_ADMIN_PASSWORD_HASH__"
+        - name: SESSION_COOKIE_SECURE
+          value: 'true'
+        - name: SESSION_TTL_SECONDS
+          value: '28800'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          periodSeconds: 5
+          failureThreshold: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          periodSeconds: 20
+        resources:
+          requests:
+            cpu: 150m
+            memory: 256Mi
+          limits:
+            cpu: '1'
+            memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-monitor-api
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  type: ClusterIP
+  selector:
+    app: rabbitmq-monitor-api
+  ports:
+  - name: http
+    port: 8000
+    targetPort: http
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rabbitmq-monitor-api
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rabbitmq-monitor-api
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-monitor-worker
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: rabbitmq-monitor-worker
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-monitor-worker
+    spec:
+      terminationGracePeriodSeconds: 120
+      initContainers:
+      - name: wait-mysql-schema
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - app.core.wait_for_db
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: http://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: http://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        resources:
+          requests:
+            cpu: 25m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+      containers:
+      - name: worker
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - app.workers.worker
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        - name: CREDENTIAL_ENCRYPTION_KEY
+          value: "__RBTMQ_PORTAL_CREDENTIAL_ENCRYPTION_KEY__"
+        - name: LDAP_HOST
+          value: "__RBTMQ_PORTAL_LDAP_HOST__"
+        - name: LDAP_PORT
+          value: "__RBTMQ_PORTAL_LDAP_PORT__"
+        - name: LDAP_BIND_DN
+          value: "__RBTMQ_PORTAL_LDAP_BIND_DN__"
+        - name: LDAP_BIND_PASSWORD
+          value: "__RBTMQ_PORTAL_LDAP_BIND_PASSWORD__"
+        - name: LDAP_SEARCH_BASE
+          value: "__RBTMQ_PORTAL_LDAP_SEARCH_BASE__"
+        - name: LDAP_SEARCH_FILTER
+          value: (&(objectClass=user)(objectCategory=person))
+        - name: LDAP_USE_SSL
+          value: "__RBTMQ_PORTAL_LDAP_USE_SSL__"
+        - name: LDAP_START_TLS
+          value: "__RBTMQ_PORTAL_LDAP_START_TLS__"
+        - name: LDAP_TLS_VERIFY
+          value: "__RBTMQ_PORTAL_LDAP_TLS_VERIFY__"
+        - name: LDAP_REQUIRE_ORG_UNIT
+          value: "__RBTMQ_PORTAL_LDAP_REQUIRE_ORG_UNIT__"
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: ENTRA_TENANT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_TENANT_ID__"
+        - name: ENTRA_CLIENT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_ID__"
+        - name: ENTRA_CLIENT_SECRET
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_SECRET__"
+        - name: ENTRA_REDIRECT_URI
+          value: "__RBTMQ_PORTAL_ENTRA_REDIRECT_URI__"
+        - name: ENTRA_GROUPS_SOURCE
+          value: "graph"
+        - name: ENTRA_GRAPH_SCOPES
+          value: "User.Read"
+        - name: ENTRA_GROUPS_CACHE_TTL
+          value: "300"
+        - name: ENTRA_ADMIN_APP_ROLE
+          value: Portal.Admin
+        - name: ENTRA_ADMIN_GROUP_ID
+          value: ''
+        - name: ENTRA_OBSERVABILITY_GROUP_ID
+          value: ""
+        - name: ENTRA_OBSERVABILITY_APP_ROLE
+          value: "Portal.Observability"
+        - name: LOCAL_ADMIN_ENABLED
+          value: 'true'
+        - name: LOCAL_ADMIN_PASSWORD_HASH
+          value: "__RBTMQ_PORTAL_LOCAL_ADMIN_PASSWORD_HASH__"
+        - name: SESSION_COOKIE_SECURE
+          value: 'true'
+        - name: SESSION_TTL_SECONDS
+          value: '28800'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        resources:
+          requests:
+            cpu: 150m
+            memory: 256Mi
+          limits:
+            cpu: '1'
+            memory: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-monitor-sync-dispatcher
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: rabbitmq-monitor-sync-dispatcher
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-monitor-sync-dispatcher
+    spec:
+      terminationGracePeriodSeconds: 120
+      initContainers:
+      - name: wait-mysql-schema
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - app.core.wait_for_db
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: http://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: http://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        resources:
+          requests:
+            cpu: 25m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+      containers:
+      - name: sync-dispatcher
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - app.workers.datadog_dispatcher
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_POLL_SECONDS
+          value: "3"
+        - name: DATADOG_SYNC_MAX_ATTEMPTS
+          value: "8"
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        - name: CREDENTIAL_ENCRYPTION_KEY
+          value: "__RBTMQ_PORTAL_CREDENTIAL_ENCRYPTION_KEY__"
+        - name: LDAP_HOST
+          value: "__RBTMQ_PORTAL_LDAP_HOST__"
+        - name: LDAP_PORT
+          value: "__RBTMQ_PORTAL_LDAP_PORT__"
+        - name: LDAP_BIND_DN
+          value: "__RBTMQ_PORTAL_LDAP_BIND_DN__"
+        - name: LDAP_BIND_PASSWORD
+          value: "__RBTMQ_PORTAL_LDAP_BIND_PASSWORD__"
+        - name: LDAP_SEARCH_BASE
+          value: "__RBTMQ_PORTAL_LDAP_SEARCH_BASE__"
+        - name: LDAP_SEARCH_FILTER
+          value: (&(objectClass=user)(objectCategory=person))
+        - name: LDAP_USE_SSL
+          value: "__RBTMQ_PORTAL_LDAP_USE_SSL__"
+        - name: LDAP_START_TLS
+          value: "__RBTMQ_PORTAL_LDAP_START_TLS__"
+        - name: LDAP_TLS_VERIFY
+          value: "__RBTMQ_PORTAL_LDAP_TLS_VERIFY__"
+        - name: LDAP_REQUIRE_ORG_UNIT
+          value: "__RBTMQ_PORTAL_LDAP_REQUIRE_ORG_UNIT__"
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: ENTRA_TENANT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_TENANT_ID__"
+        - name: ENTRA_CLIENT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_ID__"
+        - name: ENTRA_CLIENT_SECRET
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_SECRET__"
+        - name: ENTRA_REDIRECT_URI
+          value: "__RBTMQ_PORTAL_ENTRA_REDIRECT_URI__"
+        - name: ENTRA_GROUPS_SOURCE
+          value: "graph"
+        - name: ENTRA_GRAPH_SCOPES
+          value: "User.Read"
+        - name: ENTRA_GROUPS_CACHE_TTL
+          value: "300"
+        - name: ENTRA_ADMIN_APP_ROLE
+          value: Portal.Admin
+        - name: ENTRA_ADMIN_GROUP_ID
+          value: ''
+        - name: ENTRA_OBSERVABILITY_GROUP_ID
+          value: ""
+        - name: ENTRA_OBSERVABILITY_APP_ROLE
+          value: "Portal.Observability"
+        - name: LOCAL_ADMIN_ENABLED
+          value: 'true'
+        - name: LOCAL_ADMIN_PASSWORD_HASH
+          value: "__RBTMQ_PORTAL_LOCAL_ADMIN_PASSWORD_HASH__"
+        - name: SESSION_COOKIE_SECURE
+          value: 'true'
+        - name: SESSION_TTL_SECONDS
+          value: '28800'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        resources:
+          requests:
+            cpu: 150m
+            memory: 256Mi
+          limits:
+            cpu: '1'
+            memory: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-monitor-scheduler
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  replicas: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: rabbitmq-monitor-scheduler
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-monitor-scheduler
+    spec:
+      initContainers:
+      - name: wait-mysql-schema
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - app.core.wait_for_db
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: http://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: http://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        resources:
+          requests:
+            cpu: 25m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+      containers:
+      - name: scheduler
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - app.workers.scheduler
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        - name: CREDENTIAL_ENCRYPTION_KEY
+          value: "__RBTMQ_PORTAL_CREDENTIAL_ENCRYPTION_KEY__"
+        - name: LDAP_HOST
+          value: "__RBTMQ_PORTAL_LDAP_HOST__"
+        - name: LDAP_PORT
+          value: "__RBTMQ_PORTAL_LDAP_PORT__"
+        - name: LDAP_BIND_DN
+          value: "__RBTMQ_PORTAL_LDAP_BIND_DN__"
+        - name: LDAP_BIND_PASSWORD
+          value: "__RBTMQ_PORTAL_LDAP_BIND_PASSWORD__"
+        - name: LDAP_SEARCH_BASE
+          value: "__RBTMQ_PORTAL_LDAP_SEARCH_BASE__"
+        - name: LDAP_SEARCH_FILTER
+          value: (&(objectClass=user)(objectCategory=person))
+        - name: LDAP_USE_SSL
+          value: "__RBTMQ_PORTAL_LDAP_USE_SSL__"
+        - name: LDAP_START_TLS
+          value: "__RBTMQ_PORTAL_LDAP_START_TLS__"
+        - name: LDAP_TLS_VERIFY
+          value: "__RBTMQ_PORTAL_LDAP_TLS_VERIFY__"
+        - name: LDAP_REQUIRE_ORG_UNIT
+          value: "__RBTMQ_PORTAL_LDAP_REQUIRE_ORG_UNIT__"
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: ENTRA_TENANT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_TENANT_ID__"
+        - name: ENTRA_CLIENT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_ID__"
+        - name: ENTRA_CLIENT_SECRET
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_SECRET__"
+        - name: ENTRA_REDIRECT_URI
+          value: "__RBTMQ_PORTAL_ENTRA_REDIRECT_URI__"
+        - name: ENTRA_GROUPS_SOURCE
+          value: "graph"
+        - name: ENTRA_GRAPH_SCOPES
+          value: "User.Read"
+        - name: ENTRA_GROUPS_CACHE_TTL
+          value: "300"
+        - name: ENTRA_ADMIN_APP_ROLE
+          value: Portal.Admin
+        - name: ENTRA_ADMIN_GROUP_ID
+          value: ''
+        - name: ENTRA_OBSERVABILITY_GROUP_ID
+          value: ""
+        - name: ENTRA_OBSERVABILITY_APP_ROLE
+          value: "Portal.Observability"
+        - name: LOCAL_ADMIN_ENABLED
+          value: 'true'
+        - name: LOCAL_ADMIN_PASSWORD_HASH
+          value: "__RBTMQ_PORTAL_LOCAL_ADMIN_PASSWORD_HASH__"
+        - name: SESSION_COOKIE_SECURE
+          value: 'true'
+        - name: SESSION_TTL_SECONDS
+          value: '28800'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-monitor-frontend
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: rabbitmq-monitor-frontend
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-monitor-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: ImageName1
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 80
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          periodSeconds: 20
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-monitor-frontend
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  type: ClusterIP
+  selector:
+    app: rabbitmq-monitor-frontend
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rabbitmq-monitor-frontend
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rabbitmq-monitor-frontend
+  minReplicas: 1
+  maxReplicas: 2
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rabbitmq-monitor
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  ingressClassName: __RBTMQ_PORTAL_INGRESS_CLASS__
+  rules:
+  - host: __RBTMQ_PORTAL_INGRESS_HOST__
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: rabbitmq-monitor-frontend
+            port:
+              number: 80
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rabbitmq-monitor-directory-refresh
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  schedule: 0 3 * * *
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: directory-refresh
+            image: ImageName2
+            imagePullPolicy: Always
+            command:
+            - python
+            - -c
+            - from app.services.directory_service import refresh_directory_cache;
+              print(refresh_directory_cache())
+            env:
+            - name: REDIS_HOST
+              value: rabbitmq-monitor-redis
+            - name: REDIS_PORT
+              value: '6379'
+            - name: REDIS_DB
+              value: '0'
+            - name: LDAP_HOST
+              value: "__RBTMQ_PORTAL_LDAP_HOST__"
+            - name: LDAP_PORT
+              value: "__RBTMQ_PORTAL_LDAP_PORT__"
+            - name: LDAP_BIND_DN
+              value: "__RBTMQ_PORTAL_LDAP_BIND_DN__"
+            - name: LDAP_BIND_PASSWORD
+              value: "__RBTMQ_PORTAL_LDAP_BIND_PASSWORD__"
+            - name: LDAP_SEARCH_BASE
+              value: "__RBTMQ_PORTAL_LDAP_SEARCH_BASE__"
+            - name: LDAP_SEARCH_FILTER
+              value: (&(objectClass=user)(objectCategory=person))
+            - name: LDAP_USE_SSL
+              value: "__RBTMQ_PORTAL_LDAP_USE_SSL__"
+            - name: LDAP_START_TLS
+              value: "__RBTMQ_PORTAL_LDAP_START_TLS__"
+            - name: LDAP_TLS_VERIFY
+              value: "__RBTMQ_PORTAL_LDAP_TLS_VERIFY__"
+            - name: LDAP_REQUIRE_ORG_UNIT
+              value: "__RBTMQ_PORTAL_LDAP_REQUIRE_ORG_UNIT__"
+            resources:
+              requests:
+                cpu: 50m
+                memory: 128Mi
+              limits:
+                cpu: 300m
+                memory: 256Mi
+  timeZone: America/Sao_Paulo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-monitor-reconciler
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: rabbitmq-monitor-reconciler
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-monitor-reconciler
+    spec:
+      terminationGracePeriodSeconds: 120
+      initContainers:
+      - name: wait-mysql-schema
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - app.core.wait_for_db
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: http://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: http://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        resources:
+          requests:
+            cpu: 25m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+      containers:
+      - name: reconciler
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - app.workers.datadog_reconciler
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_POLL_SECONDS
+          value: "3"
+        - name: DATADOG_SYNC_MAX_ATTEMPTS
+          value: "8"
+        - name: DATADOG_RECONCILE_INTERVAL_SECONDS
+          value: "86400"
+        - name: DATADOG_RECONCILE_POLL_SECONDS
+          value: "10"
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        - name: CREDENTIAL_ENCRYPTION_KEY
+          value: "__RBTMQ_PORTAL_CREDENTIAL_ENCRYPTION_KEY__"
+        - name: LDAP_HOST
+          value: "__RBTMQ_PORTAL_LDAP_HOST__"
+        - name: LDAP_PORT
+          value: "__RBTMQ_PORTAL_LDAP_PORT__"
+        - name: LDAP_BIND_DN
+          value: "__RBTMQ_PORTAL_LDAP_BIND_DN__"
+        - name: LDAP_BIND_PASSWORD
+          value: "__RBTMQ_PORTAL_LDAP_BIND_PASSWORD__"
+        - name: LDAP_SEARCH_BASE
+          value: "__RBTMQ_PORTAL_LDAP_SEARCH_BASE__"
+        - name: LDAP_SEARCH_FILTER
+          value: (&(objectClass=user)(objectCategory=person))
+        - name: LDAP_USE_SSL
+          value: "__RBTMQ_PORTAL_LDAP_USE_SSL__"
+        - name: LDAP_START_TLS
+          value: "__RBTMQ_PORTAL_LDAP_START_TLS__"
+        - name: LDAP_TLS_VERIFY
+          value: "__RBTMQ_PORTAL_LDAP_TLS_VERIFY__"
+        - name: LDAP_REQUIRE_ORG_UNIT
+          value: "__RBTMQ_PORTAL_LDAP_REQUIRE_ORG_UNIT__"
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: ENTRA_TENANT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_TENANT_ID__"
+        - name: ENTRA_CLIENT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_ID__"
+        - name: ENTRA_CLIENT_SECRET
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_SECRET__"
+        - name: ENTRA_REDIRECT_URI
+          value: "__RBTMQ_PORTAL_ENTRA_REDIRECT_URI__"
+        - name: ENTRA_GROUPS_SOURCE
+          value: "graph"
+        - name: ENTRA_GRAPH_SCOPES
+          value: "User.Read"
+        - name: ENTRA_GROUPS_CACHE_TTL
+          value: "300"
+        - name: ENTRA_ADMIN_APP_ROLE
+          value: Portal.Admin
+        - name: ENTRA_ADMIN_GROUP_ID
+          value: ''
+        - name: ENTRA_OBSERVABILITY_GROUP_ID
+          value: ""
+        - name: ENTRA_OBSERVABILITY_APP_ROLE
+          value: "Portal.Observability"
+        - name: LOCAL_ADMIN_ENABLED
+          value: 'true'
+        - name: LOCAL_ADMIN_PASSWORD_HASH
+          value: "__RBTMQ_PORTAL_LOCAL_ADMIN_PASSWORD_HASH__"
+        - name: SESSION_COOKIE_SECURE
+          value: 'true'
+        - name: SESSION_TTL_SECONDS
+          value: '28800'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        resources:
+          requests:
+            cpu: 150m
+            memory: 256Mi
+          limits:
+            cpu: '1'
+            memory: 1Gi

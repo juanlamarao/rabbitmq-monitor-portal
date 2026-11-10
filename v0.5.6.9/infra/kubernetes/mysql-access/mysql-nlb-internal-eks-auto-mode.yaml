@@ -1,0 +1,24 @@
+# Opcional: acesso TCP ao MySQL existente via NLB INTERNO em EKS AUTO MODE.
+# Só usar se o cluster efetivamente utilizar EKS Auto Mode para Load Balancers.
+# Não aplicar simultaneamente com o manifest AWS Load Balancer Controller: mesmo Service name.
+# kubectl -n <namespace> apply -f mysql-nlb-internal-eks-auto-mode.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-monitor-mysql-nlb
+  labels:
+    app.kubernetes.io/part-of: rabbitmq-monitor-portal
+    app.kubernetes.io/component: mysql-access
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+spec:
+  type: LoadBalancer
+  loadBalancerClass: eks.amazonaws.com/nlb
+  selector:
+    app: rabbitmq-monitor-mysql
+  ports:
+    - name: mysql
+      protocol: TCP
+      port: 3306
+      targetPort: 3306
