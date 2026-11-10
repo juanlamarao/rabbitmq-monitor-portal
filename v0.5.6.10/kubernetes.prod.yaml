@@ -1,0 +1,1300 @@
+# Kubernetes EKS Dev. Variables injected from Azure DevOps Library; no ConfigMap, Secret or Ingress TLS resource.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: __RBTMQ_PORTAL_NAMESPACE__
+  labels:
+    app.kubernetes.io/part-of: rabbitmq-monitor-portal
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-monitor-mysql
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  type: ClusterIP
+  selector:
+    app: rabbitmq-monitor-mysql
+  ports:
+  - name: mysql
+    port: 3306
+    targetPort: 3306
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq-monitor-mysql
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  serviceName: rabbitmq-monitor-mysql
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq-monitor-mysql
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-monitor-mysql
+    spec:
+      containers:
+      - name: mysql
+        image: __RBTMQ_PORTAL_MYSQL_IMAGE__
+        ports:
+        - containerPort: 3306
+          name: mysql
+        env:
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        - name: MYSQL_ROOT_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_ROOT_PASSWORD__"
+        startupProbe:
+          tcpSocket:
+            port: mysql
+          periodSeconds: 10
+          failureThreshold: 45
+        readinessProbe:
+          tcpSocket:
+            port: mysql
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: '2'
+            memory: 2Gi
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+        - name: mysql-schema
+          mountPath: /docker-entrypoint-initdb.d
+          readOnly: true
+      volumes:
+      - name: mysql-schema
+        emptyDir: {}
+      initContainers:
+      - name: prepare-schema
+        image: ImageName2
+        imagePullPolicy: Always
+        securityContext:
+          runAsUser: 0
+        command:
+        - sh
+        - -ec
+        - cp /app/infra/mysql/init/001_schema.sql /schema/001_schema.sql
+        volumeMounts:
+        - name: mysql-schema
+          mountPath: /schema
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-monitor-redis
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  type: ClusterIP
+  selector:
+    app: rabbitmq-monitor-redis
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq-monitor-redis
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  serviceName: rabbitmq-monitor-redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq-monitor-redis
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-monitor-redis
+    spec:
+      containers:
+      - name: redis
+        image: __RBTMQ_PORTAL_REDIS_IMAGE__
+        command:
+        - redis-server
+        - --appendonly
+        - 'yes'
+        ports:
+        - containerPort: 6379
+          name: redis
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: '1'
+            memory: 512Mi
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-monitor-api
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: rabbitmq-monitor-api
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-monitor-api
+    spec:
+      initContainers:
+      - name: wait-mysql-schema
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - app.core.wait_for_db
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        resources:
+          requests:
+            cpu: 25m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+      containers:
+      - name: api
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - uvicorn
+        - app.main:app
+        - --host
+        - 0.0.0.0
+        - --port
+        - '8000'
+        - --proxy-headers
+        ports:
+        - name: http
+          containerPort: 8000
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        - name: CREDENTIAL_ENCRYPTION_KEY
+          value: "__RBTMQ_PORTAL_CREDENTIAL_ENCRYPTION_KEY__"
+        - name: LDAP_HOST
+          value: "__RBTMQ_PORTAL_LDAP_HOST__"
+        - name: LDAP_PORT
+          value: "__RBTMQ_PORTAL_LDAP_PORT__"
+        - name: LDAP_BIND_DN
+          value: "__RBTMQ_PORTAL_LDAP_BIND_DN__"
+        - name: LDAP_BIND_PASSWORD
+          value: "__RBTMQ_PORTAL_LDAP_BIND_PASSWORD__"
+        - name: LDAP_SEARCH_BASE
+          value: "__RBTMQ_PORTAL_LDAP_SEARCH_BASE__"
+        - name: LDAP_SEARCH_FILTER
+          value: (&(objectClass=user)(objectCategory=person))
+        - name: LDAP_USE_SSL
+          value: "__RBTMQ_PORTAL_LDAP_USE_SSL__"
+        - name: LDAP_START_TLS
+          value: "__RBTMQ_PORTAL_LDAP_START_TLS__"
+        - name: LDAP_TLS_VERIFY
+          value: "__RBTMQ_PORTAL_LDAP_TLS_VERIFY__"
+        - name: LDAP_REQUIRE_ORG_UNIT
+          value: "__RBTMQ_PORTAL_LDAP_REQUIRE_ORG_UNIT__"
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: ENTRA_TENANT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_TENANT_ID__"
+        - name: ENTRA_CLIENT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_ID__"
+        - name: ENTRA_CLIENT_SECRET
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_SECRET__"
+        - name: ENTRA_REDIRECT_URI
+          value: "__RBTMQ_PORTAL_ENTRA_REDIRECT_URI__"
+        - name: ENTRA_GROUPS_SOURCE
+          value: "graph"
+        - name: ENTRA_GRAPH_SCOPES
+          value: "User.Read"
+        - name: ENTRA_GROUPS_CACHE_TTL
+          value: "300"
+        - name: ENTRA_ADMIN_APP_ROLE
+          value: Portal.Admin
+        - name: ENTRA_ADMIN_GROUP_ID
+          value: ''
+        - name: ENTRA_OBSERVABILITY_GROUP_ID
+          value: ""
+        - name: ENTRA_OBSERVABILITY_APP_ROLE
+          value: "Portal.Observability"
+        - name: LOCAL_ADMIN_ENABLED
+          value: 'true'
+        - name: LOCAL_ADMIN_PASSWORD_HASH
+          value: "__RBTMQ_PORTAL_LOCAL_ADMIN_PASSWORD_HASH__"
+        - name: SESSION_COOKIE_SECURE
+          value: 'true'
+        - name: SESSION_TTL_SECONDS
+          value: '28800'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          periodSeconds: 5
+          failureThreshold: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          periodSeconds: 20
+        resources:
+          requests:
+            cpu: 150m
+            memory: 256Mi
+          limits:
+            cpu: '1'
+            memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-monitor-api
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  type: ClusterIP
+  selector:
+    app: rabbitmq-monitor-api
+  ports:
+  - name: http
+    port: 8000
+    targetPort: http
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rabbitmq-monitor-api
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rabbitmq-monitor-api
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-monitor-worker
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: rabbitmq-monitor-worker
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-monitor-worker
+    spec:
+      terminationGracePeriodSeconds: 120
+      initContainers:
+      - name: wait-mysql-schema
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - app.core.wait_for_db
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        resources:
+          requests:
+            cpu: 25m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+      containers:
+      - name: worker
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - app.workers.worker
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        - name: CREDENTIAL_ENCRYPTION_KEY
+          value: "__RBTMQ_PORTAL_CREDENTIAL_ENCRYPTION_KEY__"
+        - name: LDAP_HOST
+          value: "__RBTMQ_PORTAL_LDAP_HOST__"
+        - name: LDAP_PORT
+          value: "__RBTMQ_PORTAL_LDAP_PORT__"
+        - name: LDAP_BIND_DN
+          value: "__RBTMQ_PORTAL_LDAP_BIND_DN__"
+        - name: LDAP_BIND_PASSWORD
+          value: "__RBTMQ_PORTAL_LDAP_BIND_PASSWORD__"
+        - name: LDAP_SEARCH_BASE
+          value: "__RBTMQ_PORTAL_LDAP_SEARCH_BASE__"
+        - name: LDAP_SEARCH_FILTER
+          value: (&(objectClass=user)(objectCategory=person))
+        - name: LDAP_USE_SSL
+          value: "__RBTMQ_PORTAL_LDAP_USE_SSL__"
+        - name: LDAP_START_TLS
+          value: "__RBTMQ_PORTAL_LDAP_START_TLS__"
+        - name: LDAP_TLS_VERIFY
+          value: "__RBTMQ_PORTAL_LDAP_TLS_VERIFY__"
+        - name: LDAP_REQUIRE_ORG_UNIT
+          value: "__RBTMQ_PORTAL_LDAP_REQUIRE_ORG_UNIT__"
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: ENTRA_TENANT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_TENANT_ID__"
+        - name: ENTRA_CLIENT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_ID__"
+        - name: ENTRA_CLIENT_SECRET
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_SECRET__"
+        - name: ENTRA_REDIRECT_URI
+          value: "__RBTMQ_PORTAL_ENTRA_REDIRECT_URI__"
+        - name: ENTRA_GROUPS_SOURCE
+          value: "graph"
+        - name: ENTRA_GRAPH_SCOPES
+          value: "User.Read"
+        - name: ENTRA_GROUPS_CACHE_TTL
+          value: "300"
+        - name: ENTRA_ADMIN_APP_ROLE
+          value: Portal.Admin
+        - name: ENTRA_ADMIN_GROUP_ID
+          value: ''
+        - name: ENTRA_OBSERVABILITY_GROUP_ID
+          value: ""
+        - name: ENTRA_OBSERVABILITY_APP_ROLE
+          value: "Portal.Observability"
+        - name: LOCAL_ADMIN_ENABLED
+          value: 'true'
+        - name: LOCAL_ADMIN_PASSWORD_HASH
+          value: "__RBTMQ_PORTAL_LOCAL_ADMIN_PASSWORD_HASH__"
+        - name: SESSION_COOKIE_SECURE
+          value: 'true'
+        - name: SESSION_TTL_SECONDS
+          value: '28800'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        resources:
+          requests:
+            cpu: 150m
+            memory: 256Mi
+          limits:
+            cpu: '1'
+            memory: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-monitor-sync-dispatcher
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: rabbitmq-monitor-sync-dispatcher
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-monitor-sync-dispatcher
+    spec:
+      terminationGracePeriodSeconds: 120
+      initContainers:
+      - name: wait-mysql-schema
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - app.core.wait_for_db
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        resources:
+          requests:
+            cpu: 25m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+      containers:
+      - name: sync-dispatcher
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - app.workers.datadog_dispatcher
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_POLL_SECONDS
+          value: "3"
+        - name: DATADOG_SYNC_MAX_ATTEMPTS
+          value: "8"
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        - name: CREDENTIAL_ENCRYPTION_KEY
+          value: "__RBTMQ_PORTAL_CREDENTIAL_ENCRYPTION_KEY__"
+        - name: LDAP_HOST
+          value: "__RBTMQ_PORTAL_LDAP_HOST__"
+        - name: LDAP_PORT
+          value: "__RBTMQ_PORTAL_LDAP_PORT__"
+        - name: LDAP_BIND_DN
+          value: "__RBTMQ_PORTAL_LDAP_BIND_DN__"
+        - name: LDAP_BIND_PASSWORD
+          value: "__RBTMQ_PORTAL_LDAP_BIND_PASSWORD__"
+        - name: LDAP_SEARCH_BASE
+          value: "__RBTMQ_PORTAL_LDAP_SEARCH_BASE__"
+        - name: LDAP_SEARCH_FILTER
+          value: (&(objectClass=user)(objectCategory=person))
+        - name: LDAP_USE_SSL
+          value: "__RBTMQ_PORTAL_LDAP_USE_SSL__"
+        - name: LDAP_START_TLS
+          value: "__RBTMQ_PORTAL_LDAP_START_TLS__"
+        - name: LDAP_TLS_VERIFY
+          value: "__RBTMQ_PORTAL_LDAP_TLS_VERIFY__"
+        - name: LDAP_REQUIRE_ORG_UNIT
+          value: "__RBTMQ_PORTAL_LDAP_REQUIRE_ORG_UNIT__"
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: ENTRA_TENANT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_TENANT_ID__"
+        - name: ENTRA_CLIENT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_ID__"
+        - name: ENTRA_CLIENT_SECRET
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_SECRET__"
+        - name: ENTRA_REDIRECT_URI
+          value: "__RBTMQ_PORTAL_ENTRA_REDIRECT_URI__"
+        - name: ENTRA_GROUPS_SOURCE
+          value: "graph"
+        - name: ENTRA_GRAPH_SCOPES
+          value: "User.Read"
+        - name: ENTRA_GROUPS_CACHE_TTL
+          value: "300"
+        - name: ENTRA_ADMIN_APP_ROLE
+          value: Portal.Admin
+        - name: ENTRA_ADMIN_GROUP_ID
+          value: ''
+        - name: ENTRA_OBSERVABILITY_GROUP_ID
+          value: ""
+        - name: ENTRA_OBSERVABILITY_APP_ROLE
+          value: "Portal.Observability"
+        - name: LOCAL_ADMIN_ENABLED
+          value: 'true'
+        - name: LOCAL_ADMIN_PASSWORD_HASH
+          value: "__RBTMQ_PORTAL_LOCAL_ADMIN_PASSWORD_HASH__"
+        - name: SESSION_COOKIE_SECURE
+          value: 'true'
+        - name: SESSION_TTL_SECONDS
+          value: '28800'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        resources:
+          requests:
+            cpu: 150m
+            memory: 256Mi
+          limits:
+            cpu: '1'
+            memory: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-monitor-scheduler
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  replicas: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: rabbitmq-monitor-scheduler
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-monitor-scheduler
+    spec:
+      initContainers:
+      - name: wait-mysql-schema
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - app.core.wait_for_db
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        resources:
+          requests:
+            cpu: 25m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+      containers:
+      - name: scheduler
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - app.workers.scheduler
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        - name: CREDENTIAL_ENCRYPTION_KEY
+          value: "__RBTMQ_PORTAL_CREDENTIAL_ENCRYPTION_KEY__"
+        - name: LDAP_HOST
+          value: "__RBTMQ_PORTAL_LDAP_HOST__"
+        - name: LDAP_PORT
+          value: "__RBTMQ_PORTAL_LDAP_PORT__"
+        - name: LDAP_BIND_DN
+          value: "__RBTMQ_PORTAL_LDAP_BIND_DN__"
+        - name: LDAP_BIND_PASSWORD
+          value: "__RBTMQ_PORTAL_LDAP_BIND_PASSWORD__"
+        - name: LDAP_SEARCH_BASE
+          value: "__RBTMQ_PORTAL_LDAP_SEARCH_BASE__"
+        - name: LDAP_SEARCH_FILTER
+          value: (&(objectClass=user)(objectCategory=person))
+        - name: LDAP_USE_SSL
+          value: "__RBTMQ_PORTAL_LDAP_USE_SSL__"
+        - name: LDAP_START_TLS
+          value: "__RBTMQ_PORTAL_LDAP_START_TLS__"
+        - name: LDAP_TLS_VERIFY
+          value: "__RBTMQ_PORTAL_LDAP_TLS_VERIFY__"
+        - name: LDAP_REQUIRE_ORG_UNIT
+          value: "__RBTMQ_PORTAL_LDAP_REQUIRE_ORG_UNIT__"
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: ENTRA_TENANT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_TENANT_ID__"
+        - name: ENTRA_CLIENT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_ID__"
+        - name: ENTRA_CLIENT_SECRET
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_SECRET__"
+        - name: ENTRA_REDIRECT_URI
+          value: "__RBTMQ_PORTAL_ENTRA_REDIRECT_URI__"
+        - name: ENTRA_GROUPS_SOURCE
+          value: "graph"
+        - name: ENTRA_GRAPH_SCOPES
+          value: "User.Read"
+        - name: ENTRA_GROUPS_CACHE_TTL
+          value: "300"
+        - name: ENTRA_ADMIN_APP_ROLE
+          value: Portal.Admin
+        - name: ENTRA_ADMIN_GROUP_ID
+          value: ''
+        - name: ENTRA_OBSERVABILITY_GROUP_ID
+          value: ""
+        - name: ENTRA_OBSERVABILITY_APP_ROLE
+          value: "Portal.Observability"
+        - name: LOCAL_ADMIN_ENABLED
+          value: 'true'
+        - name: LOCAL_ADMIN_PASSWORD_HASH
+          value: "__RBTMQ_PORTAL_LOCAL_ADMIN_PASSWORD_HASH__"
+        - name: SESSION_COOKIE_SECURE
+          value: 'true'
+        - name: SESSION_TTL_SECONDS
+          value: '28800'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-monitor-frontend
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: rabbitmq-monitor-frontend
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-monitor-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: ImageName1
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 80
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          periodSeconds: 20
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-monitor-frontend
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  type: ClusterIP
+  selector:
+    app: rabbitmq-monitor-frontend
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rabbitmq-monitor-frontend
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rabbitmq-monitor-frontend
+  minReplicas: 1
+  maxReplicas: 2
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rabbitmq-monitor
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  ingressClassName: __RBTMQ_PORTAL_INGRESS_CLASS__
+  rules:
+  - host: __RBTMQ_PORTAL_INGRESS_HOST__
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: rabbitmq-monitor-frontend
+            port:
+              number: 80
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rabbitmq-monitor-directory-refresh
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  schedule: 0 3 * * *
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: directory-refresh
+            image: ImageName2
+            imagePullPolicy: Always
+            command:
+            - python
+            - -c
+            - from app.services.directory_service import refresh_directory_cache;
+              print(refresh_directory_cache())
+            env:
+            - name: REDIS_HOST
+              value: rabbitmq-monitor-redis
+            - name: REDIS_PORT
+              value: '6379'
+            - name: REDIS_DB
+              value: '0'
+            - name: LDAP_HOST
+              value: "__RBTMQ_PORTAL_LDAP_HOST__"
+            - name: LDAP_PORT
+              value: "__RBTMQ_PORTAL_LDAP_PORT__"
+            - name: LDAP_BIND_DN
+              value: "__RBTMQ_PORTAL_LDAP_BIND_DN__"
+            - name: LDAP_BIND_PASSWORD
+              value: "__RBTMQ_PORTAL_LDAP_BIND_PASSWORD__"
+            - name: LDAP_SEARCH_BASE
+              value: "__RBTMQ_PORTAL_LDAP_SEARCH_BASE__"
+            - name: LDAP_SEARCH_FILTER
+              value: (&(objectClass=user)(objectCategory=person))
+            - name: LDAP_USE_SSL
+              value: "__RBTMQ_PORTAL_LDAP_USE_SSL__"
+            - name: LDAP_START_TLS
+              value: "__RBTMQ_PORTAL_LDAP_START_TLS__"
+            - name: LDAP_TLS_VERIFY
+              value: "__RBTMQ_PORTAL_LDAP_TLS_VERIFY__"
+            - name: LDAP_REQUIRE_ORG_UNIT
+              value: "__RBTMQ_PORTAL_LDAP_REQUIRE_ORG_UNIT__"
+            resources:
+              requests:
+                cpu: 50m
+                memory: 128Mi
+              limits:
+                cpu: 300m
+                memory: 256Mi
+  timeZone: America/Sao_Paulo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-monitor-reconciler
+  namespace: __RBTMQ_PORTAL_NAMESPACE__
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: rabbitmq-monitor-reconciler
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-monitor-reconciler
+    spec:
+      terminationGracePeriodSeconds: 120
+      initContainers:
+      - name: wait-mysql-schema
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - app.core.wait_for_db
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        resources:
+          requests:
+            cpu: 25m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+      containers:
+      - name: reconciler
+        image: ImageName2
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - app.workers.datadog_reconciler
+        env:
+        - name: APP_NAME
+          value: RabbitMQ Monitor Portal
+        - name: APP_ENV
+          value: production
+        - name: APP_DEBUG
+          value: 'false'
+        - name: AUTO_DB_BOOTSTRAP
+          value: 'false'
+        - name: MYSQL_HOST
+          value: rabbitmq-monitor-mysql
+        - name: MYSQL_PORT
+          value: '3306'
+        - name: MYSQL_DATABASE
+          value: rabbitmq_monitor_portal
+        - name: MYSQL_USER
+          value: app
+        - name: REDIS_HOST
+          value: rabbitmq-monitor-redis
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: '0'
+        - name: DISCOVERY_SCHEDULER_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_CLEANUP_INTERVAL_SECONDS
+          value: '86400'
+        - name: REMOVED_QUEUE_RETENTION_DAYS
+          value: '60'
+        - name: DATADOG_SYNC_POLL_SECONDS
+          value: "3"
+        - name: DATADOG_SYNC_MAX_ATTEMPTS
+          value: "8"
+        - name: DATADOG_RECONCILE_INTERVAL_SECONDS
+          value: "86400"
+        - name: DATADOG_RECONCILE_POLL_SECONDS
+          value: "10"
+        - name: DATADOG_SYNC_INTERVAL_SECONDS
+          value: '86400'
+        - name: WEBHOOK_RECONCILE_INTERVAL_SECONDS
+          value: '86400'
+        - name: MYSQL_PASSWORD
+          value: "__RBTMQ_PORTAL_MYSQL_PASSWORD__"
+        - name: CREDENTIAL_ENCRYPTION_KEY
+          value: "__RBTMQ_PORTAL_CREDENTIAL_ENCRYPTION_KEY__"
+        - name: LDAP_HOST
+          value: "__RBTMQ_PORTAL_LDAP_HOST__"
+        - name: LDAP_PORT
+          value: "__RBTMQ_PORTAL_LDAP_PORT__"
+        - name: LDAP_BIND_DN
+          value: "__RBTMQ_PORTAL_LDAP_BIND_DN__"
+        - name: LDAP_BIND_PASSWORD
+          value: "__RBTMQ_PORTAL_LDAP_BIND_PASSWORD__"
+        - name: LDAP_SEARCH_BASE
+          value: "__RBTMQ_PORTAL_LDAP_SEARCH_BASE__"
+        - name: LDAP_SEARCH_FILTER
+          value: (&(objectClass=user)(objectCategory=person))
+        - name: LDAP_USE_SSL
+          value: "__RBTMQ_PORTAL_LDAP_USE_SSL__"
+        - name: LDAP_START_TLS
+          value: "__RBTMQ_PORTAL_LDAP_START_TLS__"
+        - name: LDAP_TLS_VERIFY
+          value: "__RBTMQ_PORTAL_LDAP_TLS_VERIFY__"
+        - name: LDAP_REQUIRE_ORG_UNIT
+          value: "__RBTMQ_PORTAL_LDAP_REQUIRE_ORG_UNIT__"
+        - name: DIRECTORY_CACHE_REFRESH_INTERVAL_SECONDS
+          value: '86400'
+        - name: ENTRA_TENANT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_TENANT_ID__"
+        - name: ENTRA_CLIENT_ID
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_ID__"
+        - name: ENTRA_CLIENT_SECRET
+          value: "__RBTMQ_PORTAL_ENTRA_CLIENT_SECRET__"
+        - name: ENTRA_REDIRECT_URI
+          value: "__RBTMQ_PORTAL_ENTRA_REDIRECT_URI__"
+        - name: ENTRA_GROUPS_SOURCE
+          value: "graph"
+        - name: ENTRA_GRAPH_SCOPES
+          value: "User.Read"
+        - name: ENTRA_GROUPS_CACHE_TTL
+          value: "300"
+        - name: ENTRA_ADMIN_APP_ROLE
+          value: Portal.Admin
+        - name: ENTRA_ADMIN_GROUP_ID
+          value: ''
+        - name: ENTRA_OBSERVABILITY_GROUP_ID
+          value: ""
+        - name: ENTRA_OBSERVABILITY_APP_ROLE
+          value: "Portal.Observability"
+        - name: LOCAL_ADMIN_ENABLED
+          value: 'true'
+        - name: LOCAL_ADMIN_PASSWORD_HASH
+          value: "__RBTMQ_PORTAL_LOCAL_ADMIN_PASSWORD_HASH__"
+        - name: SESSION_COOKIE_SECURE
+          value: 'true'
+        - name: SESSION_TTL_SECONDS
+          value: '28800'
+        - name: PORTAL_PUBLIC_BASE_URL
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        - name: CORS_ORIGINS
+          value: https://__RBTMQ_PORTAL_INGRESS_HOST__
+        resources:
+          requests:
+            cpu: 150m
+            memory: 256Mi
+          limits:
+            cpu: '1'
+            memory: 1Gi

@@ -1,0 +1,18 @@
+# Shared root build context for Dockerfile_Backend and Dockerfile_frontend
+.git
+.gitignore
+**/.env
+**/.env.*
+**/.venv
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/dist
+**/build
+# Manter infra/mysql/init/001_schema.sql no contexto: imagem backend
+# o copia para o bootstrap do MySQL no EKS. Os arquivos restantes não são
+# incorporados na imagem salvo quando houver instrução COPY explícita.
+docs/
+img/
+auxiliar_scripts/
+*.zip
